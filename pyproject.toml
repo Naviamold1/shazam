@@ -1,0 +1,21 @@
+[project]
+name = "spotirec"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "librosa>=0.11.0",
+    "matplotlib>=3.10.9",
+    "py-yt-search>=0.7.2",
+    "pyqt6>=6.10.0",
+    "sounddevice>=0.5.3",
+    "scipy>=1.17.1",
+    "scipy-stubs>=1.17.1.4",
+    "yt-dlp>=2026.3.17",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
