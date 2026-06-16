@@ -11,8 +11,9 @@ def load_file(p: str | CanFSPath[str] | IO[bytes]):
     if data.ndim > 1:
         data = data.mean(axis=1)
 
-    new_sr = int(sr / 4)
-    downsampled_data = signal.decimate(data, new_sr, axis=0)
+    downsample_factor = 4
+    new_sr = int(sr / downsample_factor)
+    downsampled_data = signal.decimate(data, downsample_factor, axis=0)
 
     return downsampled_data.astype(np.float32), new_sr
 
@@ -28,8 +29,15 @@ def peak_finding(
     percentile: float = 92.0,
     max_peaks: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if data.size == 0:
+    if data.size == 0 or sr <= 0:
         return np.array([]), np.array([])
+
+    nperseg = min(int(nperseg), data.size)
+    if nperseg < 2:
+        return np.array([]), np.array([])
+
+    noverlap = min(int(noverlap), nperseg - 1)
+    neighborhood_size = max(1, int(neighborhood_size))
 
     f, t, zxx = signal.stft(
         data,
@@ -37,9 +45,9 @@ def peak_finding(
         nperseg=nperseg,
         noverlap=noverlap,
         boundary=None,
+        padded=False,
     )
-    magnitude = np.abs(zxx)
-    spectrogram = 20 * np.log10(magnitude + np.finfo(float).eps)
+    spectrogram = 20 * np.log10(np.maximum(np.abs(zxx), np.finfo(float).eps))
 
     if amp_min_db is None:
         amp_min_db = float(np.percentile(spectrogram, percentile))
@@ -53,29 +61,23 @@ def peak_finding(
     peak_mask = (spectrogram == local_max) & (spectrogram >= amp_min_db)
     freq_indexes, time_indexes = np.nonzero(peak_mask)
 
-    if freq_indexes.size == 0:
+    if freq_indexes.size == 0 or max_peaks == 0:
         return np.array([]), np.array([])
 
     peak_strengths = spectrogram[freq_indexes, time_indexes]
-    order = np.lexsort((-peak_strengths, f[freq_indexes], t[time_indexes]))
-
     if max_peaks is not None:
-        if max_peaks <= 0:
+        if max_peaks < 0:
             return np.array([]), np.array([])
-        strongest = np.argsort(peak_strengths)[-max_peaks:]
-        order = strongest[
-            np.lexsort(
-                (
-                    -peak_strengths[strongest],
-                    f[freq_indexes][strongest],
-                    t[time_indexes][strongest],
-                )
-            )
-        ]
+        if freq_indexes.size > max_peaks:
+            strongest = np.argpartition(peak_strengths, -max_peaks)[-max_peaks:]
+            freq_indexes = freq_indexes[strongest]
+            time_indexes = time_indexes[strongest]
+            peak_strengths = peak_strengths[strongest]
 
-    freq_indexes = freq_indexes[order]
-    time_indexes = time_indexes[order]
-    return f[freq_indexes], t[time_indexes]
+    peak_frequencies = f[freq_indexes]
+    peak_times = t[time_indexes]
+    order = np.lexsort((-peak_strengths, peak_frequencies, peak_times))
+    return peak_frequencies[order], peak_times[order]
 
 
 def peak2(data, sr):
@@ -85,42 +87,21 @@ def peak2(data, sr):
     bands = [(0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512)]
     peaks = []
 
-    num_bins, num_frames = spectrogram.shape
+    local_max = ndimage.maximum_filter(spectrogram, size=15)
 
-    for time_idx in range(num_frames):
-        frame = spectrogram[:, time_idx]
+    threshold = np.percentile(spectrogram, 75)
 
-        for start, end in bands:
-            # Avoid going out of range if FFT size changes
-            start = max(start, 0)
-            end = min(end, num_bins)
+    freq_idx, times_idx = np.where(
+        (spectrogram == local_max) & (spectrogram > threshold)
+    )
+    order = np.argsort(times_idx)
 
-            if start >= end:
-                continue
+    freq_idx = freq_idx[order]
+    time_idx = times_idx[order]
 
-            band = frame[start:end]
-
-            local_max_idx = np.argmax(band)
-            frequency_bin = start + local_max_idx
-            value = frame[frequency_bin]
-
-            peaks.append((time_idx, frequency_bin, value))
-    
-    if not peaks:
-        return []
-
-    values = np.array([value for _, _, value in peaks])
-
-    global_mean = values.mean()
-    threshold = global_mean * 1.3
-
-    filtered = [
-        (time_idx, frequency_bin, value)
-        for time_idx, frequency_bin, value in peaks
-        if value > threshold
-    ]
-
-    return filtered
+    peak_frequencies = f[freq_idx]
+    peak_times = t[times_idx]
+    return peak_frequencies, peak_times
 
 
 def combinatorial_hashing(

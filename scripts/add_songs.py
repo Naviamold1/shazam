@@ -63,3 +63,4 @@ def fingerprint_files():
 
 
 fingerprint_files()
+# print(fingerprint_file("assets/gimme.wav", "12"))

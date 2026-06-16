@@ -1,34 +1,354 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Chat</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Shazam</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #000;
+        color: #fff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: #000;
+        color: #fff;
+        min-height: 100svh;
+        overflow-x: hidden;
+      }
+
+      button {
+        border: 0;
+        color: inherit;
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: minmax(440px, 58svh) auto;
+        min-height: 100svh;
+        padding:
+          max(18px, env(safe-area-inset-top))
+          18px
+          max(22px, env(safe-area-inset-bottom));
+      }
+
+      .listen-panel {
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 22px;
+        min-height: 0;
+        text-align: center;
+      }
+
+      .brand {
+        display: grid;
+        gap: 8px;
+        justify-items: center;
+      }
+
+      .eyebrow {
+        color: #9b9b9b;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .headline {
+        margin: 0;
+        max-width: 12ch;
+        font-size: clamp(2.35rem, 13vw, 5rem);
+        font-weight: 800;
+        line-height: 0.92;
+      }
+
+      .listen-button {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: min(74vw, 310px);
+        aspect-ratio: 1;
+        margin: 6px 0;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 24%),
+          linear-gradient(145deg, #1f1f1f, #070707 58%, #171717);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+          inset 0 -18px 44px rgba(255, 255, 255, 0.04),
+          0 0 0 10px rgba(255, 255, 255, 0.035),
+          0 28px 90px rgba(255, 255, 255, 0.12);
+        cursor: pointer;
+        isolation: isolate;
+        touch-action: manipulation;
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          background 180ms ease;
+      }
+
+      .listen-button::before,
+      .listen-button::after {
+        position: absolute;
+        content: "";
+        border-radius: inherit;
+        pointer-events: none;
+      }
+
+      .listen-button::before {
+        inset: 16%;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .listen-button::after {
+        inset: -12px;
+        z-index: -1;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .listen-button:active {
+        transform: scale(0.975);
+      }
+
+      .listen-button:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 7px;
+      }
+
+      .listen-button.is-recording {
+        background:
+          radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.34), transparent 24%),
+          linear-gradient(145deg, #2b2b2b, #090909 62%, #242424);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+          0 0 0 12px rgba(255, 255, 255, 0.06),
+          0 0 0 28px rgba(255, 255, 255, 0.025),
+          0 28px 100px rgba(255, 255, 255, 0.16);
+      }
+
+      .button-copy {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+
+      .button-icon {
+        display: block;
+        width: 46px;
+        height: 46px;
+      }
+
+      .button-label {
+        font-size: clamp(1.1rem, 4.2vw, 1.45rem);
+        font-weight: 800;
+      }
+
+      .button-hint {
+        color: #bdbdbd;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .status {
+        min-height: 1.45em;
+        margin: 0;
+        color: #c8c8c8;
+        font-size: 0.95rem;
+        line-height: 1.45;
+      }
+
+      .results {
+        display: grid;
+        align-content: start;
+        align-items: start;
+        gap: 14px;
+        width: min(100%, 720px);
+        margin: 0 auto;
+      }
+
+      .result-card {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background: #0b0b0b;
+      }
+
+      .best-match {
+        gap: 14px;
+        padding: 20px;
+        background: #fff;
+        color: #000;
+      }
+
+      .section-label {
+        margin: 0;
+        color: #9b9b9b;
+        font-size: 0.73rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .best-match .section-label {
+        color: #555;
+      }
+
+      .song-title {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: clamp(1.45rem, 7vw, 2.2rem);
+        font-weight: 850;
+        line-height: 1.02;
+      }
+
+      .candidate-title {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: 1.02rem;
+        font-weight: 760;
+        line-height: 1.2;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric {
+        display: grid;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .metric-value {
+        font-size: 0.95rem;
+        font-weight: 780;
+      }
+
+      .metric-label {
+        color: #7b7b7b;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .candidate-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .candidate {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px 14px;
+        align-items: center;
+        padding: 14px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: #080808;
+      }
+
+      .candidate-score {
+        min-width: 4.5ch;
+        text-align: right;
+        font-size: 1rem;
+        font-weight: 820;
+      }
+
+      .candidate-meta {
+        grid-column: 1 / -1;
+        color: #8d8d8d;
+        font-size: 0.82rem;
+        font-weight: 650;
+      }
+
+      .empty {
+        margin: 0;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        color: #9c9c9c;
+        background: #080808;
+        text-align: center;
+      }
+
+      @media (min-width: 720px) {
+        .app {
+          grid-template-rows: minmax(520px, 64vh) auto;
+          padding-inline: 28px;
+        }
+
+        .listen-button {
+          width: min(42vw, 340px);
+        }
+
+        .results {
+          padding-bottom: 28px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <h1>WebSocket Chat</h1>
-    <form action="" onsubmit="sendMessage(event)">
-      <input type="text" id="messageText" autocomplete="off" />
-      <button>Send</button>
-    </form>
-    <button onclick="startRecording()">hello</button>
-    <button onclick="stopRecording()">bye</button>
-    <ul id="messages"></ul>
-    <script>
-      const ws = new WebSocket("ws://localhost:8000/ws");
-      ws.binaryType = "arraybuffer";
+    <main class="app">
+      <section class="listen-panel" aria-labelledby="page-title">
+        <div class="brand">
+          <p class="eyebrow">Song finder</p>
+          <h1 id="page-title" class="headline">Tap to listen</h1>
+        </div>
 
-      ws.onmessage = function (event) {
-        const messages = document.getElementById("messages");
-        const message = document.createElement("li");
-        const payload = JSON.parse(event.data);
-        const best = payload.candidates[0];
-        const content = document.createTextNode(
-          best
-            ? `${best.title} (${Math.round(best.confidence)}%, ${best.votes} votes)`
-            : "No match found"
-        );
-        message.appendChild(content);
-        messages.appendChild(message);
-      };
+        <button id="listenButton" class="listen-button" type="button" aria-describedby="statusText">
+          <span class="button-copy">
+            <svg class="button-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <path
+                d="M24 4c5.5 0 10 4.5 10 10v10c0 5.5-4.5 10-10 10s-10-4.5-10-10V14C14 8.5 18.5 4 24 4Zm15.5 19.5a1.8 1.8 0 0 1 1.8 1.8c0 8.4-6.4 15.3-14.5 16.2v3.1h5.7a1.7 1.7 0 1 1 0 3.4h-17a1.7 1.7 0 1 1 0-3.4h5.7v-3.1A16.3 16.3 0 0 1 6.7 25.3a1.8 1.8 0 0 1 3.6 0 12.7 12.7 0 1 0 25.4 0 1.8 1.8 0 0 1 1.8-1.8Z"
+                fill="currentColor"
+              />
+            </svg>
+            <span id="buttonLabel" class="button-label">Listen</span>
+            <span id="buttonHint" class="button-hint">Tap once to start</span>
+          </span>
+        </button>
+
+        <p id="statusText" class="status" role="status">Ready when you are.</p>
+      </section>
+
+      <section id="results" class="results" aria-live="polite">
+        <p class="empty">Recognized songs and close candidates will appear here.</p>
+      </section>
+    </main>
+
+    <script>
+      const listenButton = document.getElementById("listenButton");
+      const buttonLabel = document.getElementById("buttonLabel");
+      const buttonHint = document.getElementById("buttonHint");
+      const statusText = document.getElementById("statusText");
+      const results = document.getElementById("results");
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`ws://${window.location.host}/ws`);
+      ws.binaryType = "arraybuffer";
 
       let audioContext;
       let mediaStream;
@@ -36,12 +356,51 @@
       let source;
       let audioChunks = [];
       let recordingSampleRate = 44100;
+      let isRecording = false;
+      let isWaitingForMatch = false;
+      let recordingStartedAt = 0;
+      const minimumRecordingMs = 1500;
+
+      ws.addEventListener("open", () => {
+        setStatus("Ready when you are.");
+      });
+
+      ws.addEventListener("close", () => {
+        setStatus("Connection closed. Refresh to reconnect.");
+        listenButton.disabled = true;
+      });
+
+      ws.addEventListener("error", () => {
+        setStatus("Could not connect to the recognizer.");
+      });
+
+      ws.addEventListener("message", (event) => {
+        const payload = JSON.parse(event.data);
+        isWaitingForMatch = false;
+        updateButton();
+
+        if (payload.type !== "match") {
+          return;
+        }
+
+        renderCandidates(payload.candidates ?? []);
+      });
+
+      listenButton.addEventListener("click", async () => {
+        if (isWaitingForMatch) {
+          return;
+        }
+
+        if (isRecording) {
+          await stopRecording();
+        } else {
+          await startRecording();
+        }
+      });
 
       async function startRecording() {
         try {
-          mediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
+          mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           audioChunks = [];
           audioContext = new AudioContext();
           recordingSampleRate = audioContext.sampleRate;
@@ -54,9 +413,16 @@
 
           source.connect(processor);
           processor.connect(audioContext.destination);
-          console.log("Recording started...");
+          recordingStartedAt = Date.now();
+          isRecording = true;
+          setStatus("Listening...");
+          renderEmpty("Listening for a match.");
+          updateButton();
         } catch (err) {
           console.error("Microphone access denied or error occurred:", err);
+          setStatus("Microphone permission is needed to listen.");
+          isRecording = false;
+          updateButton();
         }
       }
 
@@ -70,14 +436,130 @@
         mediaStream.getTracks().forEach((track) => track.stop());
         await audioContext.close();
 
-        const wavBytes = encodeWav(mergeChunks(audioChunks), recordingSampleRate);
-        ws.send(wavBytes);
+        const recordingDurationMs = Date.now() - recordingStartedAt;
+        const samples = mergeChunks(audioChunks);
+        const minimumSamples = Math.floor((recordingSampleRate * minimumRecordingMs) / 1000);
 
         audioContext = null;
         mediaStream = null;
         processor = null;
         source = null;
-        console.log("Recording stopped.");
+        isRecording = false;
+
+        if (recordingDurationMs < minimumRecordingMs || samples.length < minimumSamples) {
+          setStatus("Keep the clip a little longer, then try again.");
+          renderEmpty("The clip was too short to match.");
+          updateButton();
+          return;
+        }
+
+        if (ws.readyState !== WebSocket.OPEN) {
+          setStatus("Recognizer is not connected. Refresh to reconnect.");
+          renderEmpty("Connection is not ready.");
+          updateButton();
+          return;
+        }
+
+        const wavBytes = encodeWav(samples, recordingSampleRate);
+        ws.send(wavBytes);
+
+        isWaitingForMatch = true;
+        setStatus("Finding the closest songs...");
+        renderEmpty("Analyzing your recording.");
+        updateButton();
+      }
+
+      function renderCandidates(candidates) {
+        results.replaceChildren();
+
+        if (!candidates.length) {
+          setStatus("No match found. Try a longer clip.");
+          renderEmpty("No candidates yet.");
+          return;
+        }
+
+        const [best, ...others] = candidates;
+        setStatus(`${best.title} looks like the best match.`);
+
+        const bestCard = document.createElement("article");
+        bestCard.className = "result-card best-match";
+        bestCard.innerHTML = `
+          <p class="section-label">Best match</p>
+          <h2 class="song-title"></h2>
+          <div class="metrics">
+            ${metricTemplate("Confidence", formatPercent(best.confidence))}
+            ${metricTemplate("Votes", best.votes)}
+            ${metricTemplate("Offset", best.offset)}
+          </div>
+        `;
+        bestCard.querySelector(".song-title").textContent = best.title;
+        results.appendChild(bestCard);
+
+        if (!others.length) {
+          return;
+        }
+
+        const listCard = document.createElement("article");
+        listCard.className = "result-card";
+        listCard.innerHTML = `
+          <p class="section-label">Other candidates</p>
+          <ul class="candidate-list"></ul>
+        `;
+        const list = listCard.querySelector(".candidate-list");
+
+        for (const candidate of others) {
+          const item = document.createElement("li");
+          item.className = "candidate";
+          item.innerHTML = `
+            <h3 class="candidate-title"></h3>
+            <span class="candidate-score">${formatPercent(candidate.confidence)}</span>
+            <span class="candidate-meta">${candidate.votes} votes &middot; offset ${candidate.offset}</span>
+          `;
+          item.querySelector(".candidate-title").textContent = candidate.title;
+          list.appendChild(item);
+        }
+
+        results.appendChild(listCard);
+      }
+
+      function renderEmpty(message) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = message;
+        results.replaceChildren(empty);
+      }
+
+      function updateButton() {
+        listenButton.classList.toggle("is-recording", isRecording);
+        listenButton.disabled = isWaitingForMatch;
+
+        if (isWaitingForMatch) {
+          buttonLabel.textContent = "Matching";
+          buttonHint.textContent = "Hang tight";
+        } else if (isRecording) {
+          buttonLabel.textContent = "Stop";
+          buttonHint.textContent = "Tap to identify";
+        } else {
+          buttonLabel.textContent = "Listen";
+          buttonHint.textContent = "Tap once to start";
+        }
+      }
+
+      function setStatus(message) {
+        statusText.textContent = message;
+      }
+
+      function metricTemplate(label, value) {
+        return `
+          <div class="metric">
+            <span class="metric-value">${value}</span>
+            <span class="metric-label">${label}</span>
+          </div>
+        `;
+      }
+
+      function formatPercent(value) {
+        return `${Math.round(Number(value) || 0)}%`;
       }
 
       function mergeChunks(chunks) {
