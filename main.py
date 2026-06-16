@@ -1,4 +1,5 @@
 from __future__ import annotations
+import uvicorn
 
 import sys
 from pathlib import Path
@@ -154,6 +155,11 @@ class ShazamWindow(QMainWindow):
         self.open_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.open_button.clicked.connect(self.pick_wav_file)
 
+        self.open_button = QPushButton("Open to LAN")
+        self.open_button.setObjectName("secondaryButton")
+        self.open_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.open_button.clicked.connect(self.open_to_lan)
+
         self.clear_button = QPushButton("Clear")
         self.clear_button.setObjectName("ghostButton")
         self.clear_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -230,6 +236,9 @@ class ShazamWindow(QMainWindow):
         self.status_label.setText(f"Best match: {best.title}")
         for index, candidate in enumerate(candidates, start=1):
             self.results_layout.insertWidget(index - 1, CandidateCard(candidate, index))
+
+    def open_to_lan(self):
+        uvicorn.run("backend.web:app")
 
     def show_error(self, message: str) -> None:
         self.clear_result_cards()

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import BinaryIO
 
 import numpy as np
 from scipy.io import wavfile
@@ -69,6 +70,26 @@ def record_microphone_clip(duration_seconds: float = 6.0, sample_rate: int = 44_
     frames = int(duration_seconds * sample_rate)
     recording = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
     sd.wait()
+
+    return _handle_recorded_audio(recording, sample_rate)
+
+def _handle_recorded_audio(
+    recording: np.ndarray | bytes | bytearray | memoryview | BinaryIO,
+    sample_rate: int = 44_100,
+) -> Path:
+    if isinstance(recording, bytes | bytearray | memoryview):
+        data = bytes(recording)
+        if not data.startswith(b"RIFF"):
+            raise ValueError("Expected WAV bytes from the websocket recording.")
+
+        temp_file = NamedTemporaryFile(suffix=".wav", delete=False)
+        temp_path = Path(temp_file.name)
+        with temp_file:
+            temp_file.write(data)
+        return temp_path
+
+    if hasattr(recording, "read"):
+        return _handle_recorded_audio(recording.read(), sample_rate)
 
     audio = np.squeeze(recording)
     audio = np.clip(audio, -1.0, 1.0)

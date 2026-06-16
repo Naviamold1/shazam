@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Chat</title>
+  </head>
+  <body>
+    <h1>WebSocket Chat</h1>
+    <form action="" onsubmit="sendMessage(event)">
+      <input type="text" id="messageText" autocomplete="off" />
+      <button>Send</button>
+    </form>
+    <button onclick="startRecording()">hello</button>
+    <button onclick="stopRecording()">bye</button>
+    <ul id="messages"></ul>
+    <script>
+      const ws = new WebSocket("ws://localhost:8000/ws");
+      ws.binaryType = "arraybuffer";
+
+      ws.onmessage = function (event) {
+        const messages = document.getElementById("messages");
+        const message = document.createElement("li");
+        const payload = JSON.parse(event.data);
+        const best = payload.candidates[0];
+        const content = document.createTextNode(
+          best
+            ? `${best.title} (${Math.round(best.confidence)}%, ${best.votes} votes)`
+            : "No match found"
+        );
+        message.appendChild(content);
+        messages.appendChild(message);
+      };
+
+      let audioContext;
+      let mediaStream;
+      let processor;
+      let source;
+      let audioChunks = [];
+      let recordingSampleRate = 44100;
+
+      async function startRecording() {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+          audioChunks = [];
+          audioContext = new AudioContext();
+          recordingSampleRate = audioContext.sampleRate;
+          source = audioContext.createMediaStreamSource(mediaStream);
+          processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+          processor.onaudioprocess = (event) => {
+            audioChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+          };
+
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+          console.log("Recording started...");
+        } catch (err) {
+          console.error("Microphone access denied or error occurred:", err);
+        }
+      }
+
+      async function stopRecording() {
+        if (!audioContext) {
+          return;
+        }
+
+        source.disconnect();
+        processor.disconnect();
+        mediaStream.getTracks().forEach((track) => track.stop());
+        await audioContext.close();
+
+        const wavBytes = encodeWav(mergeChunks(audioChunks), recordingSampleRate);
+        ws.send(wavBytes);
+
+        audioContext = null;
+        mediaStream = null;
+        processor = null;
+        source = null;
+        console.log("Recording stopped.");
+      }
+
+      function mergeChunks(chunks) {
+        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const samples = new Float32Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+          samples.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return samples;
+      }
+
+      function encodeWav(samples, sampleRate) {
+        const bytesPerSample = 2;
+        const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+        const view = new DataView(buffer);
+
+        writeString(view, 0, "RIFF");
+        view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+        writeString(view, 8, "WAVE");
+        writeString(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * bytesPerSample, true);
+        view.setUint16(32, bytesPerSample, true);
+        view.setUint16(34, 8 * bytesPerSample, true);
+        writeString(view, 36, "data");
+        view.setUint32(40, samples.length * bytesPerSample, true);
+
+        let offset = 44;
+        for (const sample of samples) {
+          const clipped = Math.max(-1, Math.min(1, sample));
+          view.setInt16(offset, clipped < 0 ? clipped * 0x8000 : clipped * 0x7fff, true);
+          offset += bytesPerSample;
+        }
+
+        return buffer;
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i += 1) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+    </script>
+  </body>
+</html>

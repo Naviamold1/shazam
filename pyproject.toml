@@ -13,9 +13,13 @@ dependencies = [
     "scipy>=1.17.1",
     "scipy-stubs>=1.17.1.4",
     "yt-dlp>=2026.3.17",
+    "fastapi[standard]>=0.137.1",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
 ]
+
+[tool.fastapi]
+entrypoint = "backend.web:app"

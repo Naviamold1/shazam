@@ -10,7 +10,11 @@ def load_file(p: str | CanFSPath[str] | IO[bytes]):
 
     if data.ndim > 1:
         data = data.mean(axis=1)
-    return data.astype(np.float32), sr
+
+    new_sr = int(sr / 4)
+    downsampled_data = signal.decimate(data, new_sr, axis=0)
+
+    return downsampled_data.astype(np.float32), new_sr
 
 
 def peak_finding(
@@ -24,12 +28,6 @@ def peak_finding(
     percentile: float = 92.0,
     max_peaks: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return spectrogram peak frequencies and times ordered by time.
-
-    Peaks are local maxima in a log-magnitude STFT. The percentile threshold
-    keeps the fingerprint dense enough for matching while discarding background
-    energy that would otherwise create many unstable hashes.
-    """
     if data.size == 0:
         return np.array([]), np.array([])
 
@@ -78,6 +76,51 @@ def peak_finding(
     freq_indexes = freq_indexes[order]
     time_indexes = time_indexes[order]
     return f[freq_indexes], t[time_indexes]
+
+
+def peak2(data, sr):
+    f, t, zxx = signal.stft(data, sr, nperseg=1022)
+    spectrogram = np.abs(zxx)
+
+    bands = [(0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512)]
+    peaks = []
+
+    num_bins, num_frames = spectrogram.shape
+
+    for time_idx in range(num_frames):
+        frame = spectrogram[:, time_idx]
+
+        for start, end in bands:
+            # Avoid going out of range if FFT size changes
+            start = max(start, 0)
+            end = min(end, num_bins)
+
+            if start >= end:
+                continue
+
+            band = frame[start:end]
+
+            local_max_idx = np.argmax(band)
+            frequency_bin = start + local_max_idx
+            value = frame[frequency_bin]
+
+            peaks.append((time_idx, frequency_bin, value))
+    
+    if not peaks:
+        return []
+
+    values = np.array([value for _, _, value in peaks])
+
+    global_mean = values.mean()
+    threshold = global_mean * 1.3
+
+    filtered = [
+        (time_idx, frequency_bin, value)
+        for time_idx, frequency_bin, value in peaks
+        if value > threshold
+    ]
+
+    return filtered
 
 
 def combinatorial_hashing(
