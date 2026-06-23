@@ -1,0 +1,126 @@
+#eyebrow {
+  color: #b3b3b3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+#appTitle {
+  color: #ffffff;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+#subtitle {
+  color: #b3b3b3;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+#findButton {
+  background-color: #1db954;
+  border: none;
+  border-radius: 90px;
+  color: #000000;
+  font-size: 18px;
+  font-weight: 700;
+  min-width: 180px;
+  max-width: 180px;
+  min-height: 180px;
+  max-height: 180px;
+}
+
+#findButton:hover {
+  background-color: #1ed760;
+  padding-bottom: 2px;
+}
+
+#findButton:pressed {
+  background-color: #1aa34a;
+}
+
+#findButton:disabled,
+#secondaryButton:disabled,
+#ghostButton:disabled {
+  color: #555555;
+  background-color: #242424;
+  border-color: transparent;
+}
+
+/* Secondary and Utility Actions */
+#secondaryButton,
+#ghostButton {
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 0 20px;
+}
+
+#secondaryButton {
+  background-color: #ffffff;
+  color: #000000;
+  border: none;
+}
+
+#secondaryButton:hover {
+  background-color: #f0f0f0;
+}
+
+#ghostButton {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #727272;
+}
+
+#ghostButton:hover {
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+#statusLabel {
+  color: #b3b3b3;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+#resultsArea,
+#resultsContainer {
+  background-color: transparent;
+}
+
+#candidateCard {
+  background-color: #181818;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+#candidateCard:hover {
+  background-color: #282828;
+}
+
+#rankLabel {
+  color: #b3b3b3;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#candidateTitle {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#candidateDetail {
+  color: #b3b3b3;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+#confidenceLabel {
+  color: #1db954;
+  font-size: 16px;
+  font-weight: 700;
+}

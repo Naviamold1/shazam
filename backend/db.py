@@ -38,26 +38,12 @@ class DBManager:
 
     def add_songs(
         self,
-        params: list[tuple[str, str | None, str | None] | tuple[str, str, str | None, str | None]],
+        params: list[tuple[str, str, str | None, str | None]],
     ):
         """
-        Accepts either:
         [(song_id, song_name, song_author, song_genre), ...]
-        [(song_name, song_author, song_genre), ...]
         """
         curr = self.conn.cursor()
-        rows: list[tuple[str, str, str | None, str | None]] = []
-
-        for item in params:
-            if len(item) == 4:
-                song_id, song_name, song_author, song_genre = item
-            elif len(item) == 3:
-                song_id = uuid4().hex
-                song_name, song_author, song_genre = item
-            else:
-                raise ValueError("Songs must be 3-tuples or 4-tuples")
-            rows.append((str(song_id), song_name, song_author, song_genre))
-
         try:
             curr.executemany(
                 """
@@ -65,14 +51,11 @@ class DBManager:
                 ?, ?, ?, ?
             )
             """,
-                rows,
+                params,
             )
             self.conn.commit()
         except Exception as e:
             print(e)
-
-        ids = [row[0] for row in rows]
-        return ids[0] if len(ids) == 1 else ids
 
     def add_hashes(self, hashes: list[tuple[str, int, str]]):
         curr = self.conn.cursor()

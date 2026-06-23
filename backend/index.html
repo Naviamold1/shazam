@@ -2,13 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Shazam</title>
     <style>
       :root {
         color-scheme: dark;
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
           sans-serif;
         background: #000;
         color: #fff;
@@ -41,9 +49,7 @@
         display: grid;
         grid-template-rows: minmax(440px, 58svh) auto;
         min-height: 100svh;
-        padding:
-          max(18px, env(safe-area-inset-top))
-          18px
+        padding: max(18px, env(safe-area-inset-top)) 18px
           max(22px, env(safe-area-inset-bottom));
       }
 
@@ -87,7 +93,11 @@
         margin: 6px 0;
         border-radius: 50%;
         background:
-          radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 24%),
+          radial-gradient(
+            circle at 35% 30%,
+            rgba(255, 255, 255, 0.28),
+            transparent 24%
+          ),
           linear-gradient(145deg, #1f1f1f, #070707 58%, #171717);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.12),
@@ -133,7 +143,11 @@
 
       .listen-button.is-recording {
         background:
-          radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.34), transparent 24%),
+          radial-gradient(
+            circle at 50% 42%,
+            rgba(255, 255, 255, 0.34),
+            transparent 24%
+          ),
           linear-gradient(145deg, #2b2b2b, #090909 62%, #242424);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.18),
@@ -319,7 +333,15 @@
           <h1 id="page-title" class="headline">Tap to listen</h1>
         </div>
 
-        <button id="listenButton" class="listen-button" type="button" aria-describedby="statusText">
+        <div>
+          Navigate to <span id="url"></span> to listen from the mobile device!
+        </div>
+        <button
+          id="listenButton"
+          class="listen-button"
+          type="button"
+          aria-describedby="statusText"
+        >
           <span class="button-copy">
             <svg class="button-icon" viewBox="0 0 48 48" aria-hidden="true">
               <path
@@ -336,18 +358,22 @@
       </section>
 
       <section id="results" class="results" aria-live="polite">
-        <p class="empty">Recognized songs and close candidates will appear here.</p>
+        <p class="empty">
+          Recognized songs and close candidates will appear here.
+        </p>
       </section>
     </main>
 
     <script>
+      const urlBar = document.getElementById("url");
+      urlBar.textContent = window.location.href;
       const listenButton = document.getElementById("listenButton");
       const buttonLabel = document.getElementById("buttonLabel");
       const buttonHint = document.getElementById("buttonHint");
       const statusText = document.getElementById("statusText");
       const results = document.getElementById("results");
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`ws://${window.location.host}/ws`);
+      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
       ws.binaryType = "arraybuffer";
 
       let audioContext;
@@ -366,12 +392,18 @@
       });
 
       ws.addEventListener("close", () => {
-        setStatus("Connection closed. Refresh to reconnect.");
+        setStatus(`WebSocket disconnected from ${window.location.host}.`);
+        renderEmpty("Refresh after confirming the server is still running.");
         listenButton.disabled = true;
       });
 
       ws.addEventListener("error", () => {
-        setStatus("Could not connect to the recognizer.");
+        setStatus(
+          `Could not connect to ${wsProtocol}//${window.location.host}/ws.`,
+        );
+        renderEmpty(
+          "If this page is HTTPS, the WebSocket must use WSS and the certificate must be trusted.",
+        );
       });
 
       ws.addEventListener("message", (event) => {
@@ -400,15 +432,43 @@
 
       async function startRecording() {
         try {
-          mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          if (!window.isSecureContext) {
+            setStatus("Microphone needs HTTPS on mobile.");
+            renderEmpty(
+              "Open the HTTPS URL and trust the local certificate on this device.",
+            );
+            return;
+          }
+
+          if (!navigator.mediaDevices?.getUserMedia) {
+            setStatus("This browser cannot access the microphone here.");
+            renderEmpty(
+              "Mobile browsers require HTTPS and microphone permission.",
+            );
+            return;
+          }
+
+          if (ws.readyState !== WebSocket.OPEN) {
+            setStatus("Recognizer is not connected yet.");
+            renderEmpty("Refresh after the WebSocket connects.");
+            return;
+          }
+
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
           audioChunks = [];
-          audioContext = new AudioContext();
+          const AudioContextClass =
+            window.AudioContext || window.webkitAudioContext;
+          audioContext = new AudioContextClass();
           recordingSampleRate = audioContext.sampleRate;
           source = audioContext.createMediaStreamSource(mediaStream);
           processor = audioContext.createScriptProcessor(4096, 1, 1);
 
           processor.onaudioprocess = (event) => {
-            audioChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+            audioChunks.push(
+              new Float32Array(event.inputBuffer.getChannelData(0)),
+            );
           };
 
           source.connect(processor);
@@ -420,7 +480,10 @@
           updateButton();
         } catch (err) {
           console.error("Microphone access denied or error occurred:", err);
-          setStatus("Microphone permission is needed to listen.");
+          setStatus(`Microphone error: ${err.name || "unknown"}.`);
+          renderEmpty(
+            err.message || "Microphone permission is needed to listen.",
+          );
           isRecording = false;
           updateButton();
         }
@@ -438,7 +501,9 @@
 
         const recordingDurationMs = Date.now() - recordingStartedAt;
         const samples = mergeChunks(audioChunks);
-        const minimumSamples = Math.floor((recordingSampleRate * minimumRecordingMs) / 1000);
+        const minimumSamples = Math.floor(
+          (recordingSampleRate * minimumRecordingMs) / 1000,
+        );
 
         audioContext = null;
         mediaStream = null;
@@ -446,7 +511,10 @@
         source = null;
         isRecording = false;
 
-        if (recordingDurationMs < minimumRecordingMs || samples.length < minimumSamples) {
+        if (
+          recordingDurationMs < minimumRecordingMs ||
+          samples.length < minimumSamples
+        ) {
           setStatus("Keep the clip a little longer, then try again.");
           renderEmpty("The clip was too short to match.");
           updateButton();
@@ -563,7 +631,10 @@
       }
 
       function mergeChunks(chunks) {
-        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const totalLength = chunks.reduce(
+          (sum, chunk) => sum + chunk.length,
+          0,
+        );
         const samples = new Float32Array(totalLength);
         let offset = 0;
         for (const chunk of chunks) {
@@ -595,7 +666,11 @@
         let offset = 44;
         for (const sample of samples) {
           const clipped = Math.max(-1, Math.min(1, sample));
-          view.setInt16(offset, clipped < 0 ? clipped * 0x8000 : clipped * 0x7fff, true);
+          view.setInt16(
+            offset,
+            clipped < 0 ? clipped * 0x8000 : clipped * 0x7fff,
+            true,
+          );
           offset += bytesPerSample;
         }
 

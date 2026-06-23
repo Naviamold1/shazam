@@ -12,6 +12,7 @@ wheels/
 
 # Custom
 *.db
+.certs/
 /assets
 */shazam.ipynb
 list

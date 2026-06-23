@@ -47,7 +47,7 @@ def peak_finding(
         boundary=None,
         padded=False,
     )
-    spectrogram = 20 * np.log10(np.maximum(np.abs(zxx), np.finfo(float).eps))
+    spectrogram = np.abs(zxx)
 
     if amp_min_db is None:
         amp_min_db = float(np.percentile(spectrogram, percentile))
@@ -80,7 +80,7 @@ def peak_finding(
     return peak_frequencies[order], peak_times[order]
 
 
-def peak2(data, sr):
+def extract_peaks(data, sr):
     f, t, zxx = signal.stft(data, sr, nperseg=1022)
     spectrogram = np.abs(zxx)
 
@@ -108,22 +108,12 @@ def combinatorial_hashing(
     f: np.ndarray,
     t: np.ndarray,
     song_id: str | None = None,
-    *,
     min_time_between_peaks: float = 0.05,
     max_time_between_peaks: float = 2.0,
     max_targets: int = 5,
     freq_bin_hz: int = 20,
     time_bin_seconds: float = 0.01,
-) -> list[tuple[str, int] | tuple[str, int, str]]:
-    """Create landmark hashes from time-ordered spectral peaks.
-
-    Each hash contains an anchor frequency, target frequency, and quantized
-    time delta. The returned time is the quantized anchor time, used later for
-    offset voting during search.
-    """
-    if len(f) != len(t):
-        raise ValueError("Frequency and time peak arrays must have the same length")
-
+):
     order = np.lexsort((f, t))
     frequencies = f[order]
     times = t[order]
@@ -159,10 +149,11 @@ def combinatorial_hashing(
                 hashes.append((hash_value, anchor_time_bin))
             else:
                 hashes.append((hash_value, anchor_time_bin, song_id))
+    print(hashes)
     return hashes
 
 
-def fingerprint_file(path: str | CanFSPath[str] | IO[bytes], song_id: str):
+def fingerprint_file(path: str | CanFSPath[str] | IO[bytes], song_id: str | None = None):
     data, sr = load_file(path)
     peak_frequencies, peak_times = peak_finding(data, sr)
     return combinatorial_hashing(peak_frequencies, peak_times, song_id)

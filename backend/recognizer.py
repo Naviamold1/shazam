@@ -1,4 +1,4 @@
-from __future__ import annotations
+import sounddevice as sd
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,11 +28,11 @@ class SongRecognizer:
         self.db = DBManager(db_path)
 
     def recognize_file(self, path: str | Path, limit: int = 5) -> list[SongCandidate]:
-        hashes = fingerprint_file(path, "__query__")
-        query_hashes = [(hash_value, time) for hash_value, time, _song_id in hashes]
+        hashes = fingerprint_file(path, None)
         rows = []
         seen_song_ids = set()
-        for row in self.db.find_song(query_hashes):
+        print(self.db.find_song(hashes))
+        for row in self.db.find_song(hashes):
             song_id = str(row[0])
             if song_id in seen_song_ids:
                 continue
@@ -59,19 +59,15 @@ class SongRecognizer:
         ]
 
 
-def record_microphone_clip(duration_seconds: float = 6.0, sample_rate: int = 44_100) -> Path:
-    try:
-        import sounddevice as sd
-    except ImportError as exc:
-        raise RuntimeError(
-            "Microphone recording requires the optional 'sounddevice' package."
-        ) from exc
-
+def record_microphone_clip(
+    duration_seconds: float = 6.0, sample_rate: int = 44_100
+) -> Path:
     frames = int(duration_seconds * sample_rate)
     recording = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
     sd.wait()
 
     return _handle_recorded_audio(recording, sample_rate)
+
 
 def _handle_recorded_audio(
     recording: np.ndarray | bytes | bytearray | memoryview | BinaryIO,
