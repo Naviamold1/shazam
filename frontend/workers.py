@@ -17,7 +17,7 @@ class RecognitionWorker(QObject):
         self.mode = mode
         self.wav_path = wav_path
 
-    def run(self) -> None:
+    def run(self):
         temp_path: Path | None = None
         try:
             if self.mode == "microphone":
@@ -42,7 +42,7 @@ class RecognitionWorker(QObject):
 class ServerThread(QThread):
     server_started = pyqtSignal(str)
 
-    def run(self) -> None:
+    def run(self):
         self.server_started.emit(f"https://{get_lan_ip()}:8443")
         open_lan()
 
@@ -56,7 +56,7 @@ class YouTubeSearchWorker(QObject):
         self.query = query
         self.limit = limit
 
-    def run(self) -> None:
+    def run(self):
         try:
             ydl_opts = {
                 "quiet": True,
@@ -99,7 +99,7 @@ class YouTubeStreamWorker(QObject):
         super().__init__()
         self.result = result
 
-    def run(self) -> None:
+    def run(self):
         try:
             ydl_opts = {
                 "quiet": True,

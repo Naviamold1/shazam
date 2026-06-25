@@ -25,7 +25,7 @@ class MusicAppWindow(QMainWindow):
         layout.setSpacing(16)
 
         self.player = SpotifyPlayer()
-        self.shazam = ShazamPanel(root_dir, self.db_path)
+        self.shazam = ShazamPanel(self.db_path)
 
         layout.addWidget(self.player, stretch=3)
         # layout.addWidget(self.shazam, stretch=1)
@@ -42,7 +42,7 @@ class MusicAppWindow(QMainWindow):
         else:
             self.shazam.show()
 
-    def apply_styles(self) -> None:
+    def apply_styles(self):
         with open("frontend/style.qss", "r") as f:
             # self.setStyleSheet(f.read())
             qdarktheme.setup_theme(additional_qss=f.read())
