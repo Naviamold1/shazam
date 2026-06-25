@@ -299,28 +299,8 @@ class SpotifyPlayer(QWidget):
         root.addWidget(scroll_area, stretch=1)
         root.addWidget(player_bar)
 
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setFocus()
-
-    # ---------- Keyboard events ----------
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Space:
-            self.toggle_playback()
-        elif event.key() == Qt.Key.Key_Right:
-            self.media_player.setPosition(self.media_player.position() + 5000)
-        elif event.key() == Qt.Key.Key_Left:
-            self.media_player.setPosition(self.media_player.position() - 5000)
-        elif event.key() == Qt.Key.Key_Up:
-            self.volume_slider.setValue(min(self.volume_slider.value() + 5, 100))
-        elif event.key() == Qt.Key.Key_Down:
-            self.volume_slider.setValue(max(self.volume_slider.value() - 5, 0))
-        else:
-            super().keyPressEvent(event)
-
-    # ---------- Search / Play logic ----------
-    def search(self, query: str = None):
-        if query is None:
-            query = self.search_input.text().strip()
+    def search(self):
+        query = self.search_input.text().strip()
         if not query:
             self.status_label.setText("Search needs a song name.")
             return
@@ -341,7 +321,7 @@ class SpotifyPlayer(QWidget):
         self.search_thread.finished.connect(self.release_search_worker)
         self.search_thread.start()
 
-    def show_results(self, results: list[dict]) -> None:
+    def show_results(self, results: list[dict]):
         self.clear_results()
         if not results:
             self.status_label.setText("No YouTube results found.")
@@ -357,7 +337,7 @@ class SpotifyPlayer(QWidget):
             )
             self.results_layout.insertWidget(index - 1, row)
 
-    def play_result(self, result: dict) -> None:
+    def play_result(self, result: dict):
         self.set_stream_busy(True)
         self.current_result = result
         if result in self.results_list:
@@ -376,50 +356,13 @@ class SpotifyPlayer(QWidget):
         self.stream_thread.finished.connect(self.release_stream_worker)
         self.stream_thread.start()
 
-    def start_stream(self, result: dict) -> None:
+    def start_stream(self, result: dict):
         self.current_result = result
         self.now_playing.setText(f"{result['title']} - {result['artist']}")
         self.media_player.setSource(QUrl(result["stream_url"]))
         self.media_player.play()
         self.status_label.setText("Playing from YouTube.")
 
-    # ---------- Playlist navigation ----------
-    def play_next(self):
-        if not self.results_list or self.current_index == -1:
-            return
-        if self.shuffle_btn.isChecked():
-            next_idx = random.randint(0, len(self.results_list)-1)
-        else:
-            next_idx = (self.current_index + 1) % len(self.results_list)
-        self.play_result(self.results_list[next_idx])
-
-    def play_previous(self):
-        if not self.results_list or self.current_index == -1:
-            return
-        prev_idx = (self.current_index - 1) % len(self.results_list)
-        self.play_result(self.results_list[prev_idx])
-
-    def toggle_shuffle(self, checked):
-        pass
-
-    def cycle_repeat(self):
-        current = self.repeat_btn.text()
-        if current == "Repeat":
-            self.repeat_btn.setText("Repeat One")
-            self.media_player.mediaStatusChanged.connect(self._handle_repeat_one)
-        elif current == "Repeat One":
-            self.repeat_btn.setText("Repeat All")
-            self.media_player.mediaStatusChanged.disconnect(self._handle_repeat_one)
-        else:
-            self.repeat_btn.setText("Repeat")
-            self.media_player.mediaStatusChanged.disconnect(self._handle_repeat_one)
-
-    def _handle_repeat_one(self, status):
-        if status == QMediaPlayer.MediaStatus.EndOfMedia:
-            self.media_player.setPosition(0)
-            self.media_player.play()
-
-    # ---------- Playback controls ----------
     def toggle_playback(self):
         if self.media_player.source().isEmpty():
             self.status_label.setText("Choose a search result first.")
@@ -430,78 +373,49 @@ class SpotifyPlayer(QWidget):
             self.media_player.play()
 
     def stop_playback(self):
+    def stop_playback(self):
         self.media_player.stop()
         self.play_pause_button.setText("Play")
         self.seek_slider.setValue(0)
         self.elapsed_label.setText("0:00")
 
-    def sync_play_button(self, state):
+    def sync_play_button(self, state: QMediaPlayer.PlaybackState):
         self.play_pause_button.setText(
             "Pause" if state == QMediaPlayer.PlaybackState.PlayingState else "Play"
         )
 
-    # ---------- Seek & time ----------
-    def update_position(self, position_ms):
-        if not self.seek_slider.isSliderDown():
-            self.seek_slider.blockSignals(True)
-            duration = self.media_player.duration()
-            if duration > 0:
-                self.seek_slider.setValue(int(position_ms / duration * 1000))
-            self.elapsed_label.setText(format_duration_ms(position_ms))
-            self.seek_slider.blockSignals(False)
-
-    def update_duration(self, duration_ms):
-        self.duration_label.setText(format_duration_ms(duration_ms))
-        self.seek_slider.setEnabled(duration_ms > 0)
-
-    def seek_position(self, slider_value):
-        duration = self.media_player.duration()
-        if duration > 0:
-            self.media_player.setPosition(int(slider_value / 1000 * duration))
-
-    # ---------- Volume & mute ----------
-    def set_volume(self, value):
-        self.audio_output.setVolume(value / 100)
-        self.settings.setValue("volume", value)
-
-    def toggle_mute(self):
-        muted = not self.audio_output.isMuted()
-        self.audio_output.setMuted(muted)
-        self.mute_button.setText("Mute" if muted else "Vol")
-        self.settings.setValue("muted", muted)
-
-    # ---------- Speed ----------
-    def set_speed(self, text):
-        speed_map = {"0.5x": 0.5, "1x": 1.0, "1.5x": 1.5, "2x": 2.0}
-        self.media_player.setPlaybackRate(speed_map.get(text, 1.0))
-
-    # ---------- Error & state ----------
     def show_player_error(self):
         error = self.media_player.errorString()
         if error:
             self.status_label.setText(error)
 
     def show_error(self, message: str):
+    def show_error(self, message: str):
         self.status_label.setText(message)
 
+    def set_search_busy(self, busy: bool):
     def set_search_busy(self, busy: bool):
         self.search_button.setEnabled(not busy)
         self.search_input.setEnabled(not busy)
 
     def set_stream_busy(self, busy: bool):
+    def set_stream_busy(self, busy: bool):
         self.play_pause_button.setEnabled(not busy)
         self.stop_button.setEnabled(not busy)
 
+    def release_search_worker(self):
     def release_search_worker(self):
         self.search_worker = None
         self.search_thread = None
         self.set_search_busy(False)
 
     def release_stream_worker(self):
+    def release_stream_worker(self):
         self.stream_worker = None
         self.stream_thread = None
         self.set_stream_busy(False)
 
+    def clear_results(self):
     def clear_results(self):
         while self.results_layout.count() > 1:
             item = self.results_layout.takeAt(0)

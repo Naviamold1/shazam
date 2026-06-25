@@ -1,6 +1,5 @@
 import sqlite3
 from pathlib import Path
-from uuid import uuid4
 
 
 class DBManager:
@@ -31,6 +30,35 @@ class DBManager:
         """)
         cursor.execute("""
         CREATE INDEX IF NOT EXISTS hash_idx ON hashes (hash)
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            song_id TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(song_id) REFERENCES songs(id)
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS playlists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_name TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            song_id TEXT NOT NULL,
+            track_order INTEGER,
+            playlist_id INTEGER NOT NULL,
+            UNIQUE(playlist_id, track_order),
+            FOREIGN KEY(song_id) REFERENCES songs(id),
+            FOREIGN KEY(playlist_id) REFERENCES playlists(id)
+        )
         """)
 
         self.conn.commit()

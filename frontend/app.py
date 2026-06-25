@@ -26,11 +26,7 @@ class MusicAppWindow(QMainWindow):
         self.shazam.setMinimumWidth(360)
 
         self.player = SpotifyPlayer()
-
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.VLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setObjectName("panelSeparator")
+        self.shazam = ShazamPanel(self.db_path)
 
         main_layout.addWidget(self.shazam, stretch=2)
         main_layout.addWidget(separator)
@@ -41,7 +37,14 @@ class MusicAppWindow(QMainWindow):
 
         self.apply_styles()
 
-    def apply_styles(self) -> None:
+    def toggle_shazam_window(self):
+        if self.shazam.isVisible():
+            self.shazam.hide()
+
+        else:
+            self.shazam.show()
+
+    def apply_styles(self):
         with open("frontend/style.qss", "r") as f:
             custom_qss = f.read()
         qdarktheme.setup_theme(

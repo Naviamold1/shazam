@@ -1,13 +1,10 @@
+import sys
+import shutil
+import subprocess
 import sounddevice as sd
-
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import BinaryIO
-
-import numpy as np
-from scipy.io import wavfile
-
 from backend.db import DBManager
 from backend.main import fingerprint_file
 
@@ -66,33 +63,67 @@ def record_microphone_clip(
     recording = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
     sd.wait()
 
-    return _handle_recorded_audio(recording, sample_rate)
+    return _handle_recorded_audio(recording)
+
+
+def _get_ffmpeg() -> str:
+    system_path = shutil.which("ffmpeg")
+    if system_path:
+        return system_path
+
+    ext = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+
+    return str(Path(__file__).parent / "bin" / ext)
 
 
 def _handle_recorded_audio(
-    recording: np.ndarray | bytes | bytearray | memoryview | BinaryIO,
-    sample_rate: int = 44_100,
+    recording: bytes,
 ) -> Path:
-    if isinstance(recording, bytes | bytearray | memoryview):
-        data = bytes(recording)
-        if not data.startswith(b"RIFF"):
-            raise ValueError("Expected WAV bytes from the websocket recording.")
-
+    data = bytes(recording)
+    if data.startswith(b"RIFF"):
         temp_file = NamedTemporaryFile(suffix=".wav", delete=False)
         temp_path = Path(temp_file.name)
         with temp_file:
             temp_file.write(data)
         return temp_path
 
-    if hasattr(recording, "read"):
-        return _handle_recorded_audio(recording.read(), sample_rate)
+    temp_input = NamedTemporaryFile(suffix=".webm", delete=False)
+    temp_input_path = Path(temp_input.name)
+    with temp_input:
+        temp_input.write(data)
 
-    audio = np.squeeze(recording)
-    audio = np.clip(audio, -1.0, 1.0)
-    pcm_audio = (audio * np.iinfo(np.int16).max).astype(np.int16)
+    ffmpeg = _get_ffmpeg()
+    if ffmpeg is None:
+        temp_input_path.unlink(missing_ok=True)
+        raise RuntimeError("ffmpeg is required to convert websocket audio recordings.")
 
-    temp_file = NamedTemporaryFile(suffix=".wav", delete=False)
-    temp_path = Path(temp_file.name)
-    temp_file.close()
-    wavfile.write(temp_path, sample_rate, pcm_audio)
-    return temp_path
+    temp_output = NamedTemporaryFile(suffix=".wav", delete=False)
+    temp_output_path = Path(temp_output.name)
+    temp_output.close()
+
+    try:
+        subprocess.run(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(temp_input_path),
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                "11025",
+                str(temp_output_path),
+            ],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        temp_input_path.unlink(missing_ok=True)
+        temp_output_path.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"ffmpeg failed to convert the recording: {exc.stderr.decode(errors='ignore')}"
+        ) from exc
+
+    temp_input_path.unlink(missing_ok=True)
+    return temp_output_path

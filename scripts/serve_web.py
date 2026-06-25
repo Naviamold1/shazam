@@ -78,7 +78,7 @@ def get_lan_ip() -> str:
             return "127.0.0.1"
 
 
-def ensure_certificate(domain: str, lan_ip: str) -> None:
+def ensure_certificate(domain: str, lan_ip: str):
     CERT_DIR.mkdir(exist_ok=True)
     cert_meta = f"{domain}\n{lan_ip}\n"
     if (

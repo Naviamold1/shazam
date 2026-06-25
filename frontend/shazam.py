@@ -69,9 +69,8 @@ class CandidateCard(QFrame):
 
 
 class ShazamPanel(QWidget):
-    def __init__(self, root_dir: Path, db_path: Path):
+    def __init__(self, db_path: Path):
         super().__init__()
-        self.root_dir = root_dir
         self.db_path = db_path
         self.worker_thread: QThread | None = None
         self.worker: RecognitionWorker | None = None
@@ -157,15 +156,20 @@ class ShazamPanel(QWidget):
         root.addWidget(scroll_area, stretch=1)
 
     def start_microphone_recognition(self):
+    def start_microphone_recognition(self):
         self.start_worker("microphone")
 
     def pick_wav_file(self):
+    def pick_wav_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Choose a WAV clip", str(self.root_dir / "assets"), "WAV files (*.wav)"
+            self,
+            "Choose a WAV clip",
+            filter="WAV files (*.wav)",
         )
         if file_path:
             self.start_worker("file", Path(file_path))
 
+    def start_worker(self, mode: str, wav_path: Path | None = None):
     def start_worker(self, mode: str, wav_path: Path | None = None):
         self.set_busy(True)
         self.status_label.setText("Listening..." if mode == "microphone" else "Fingerprinting file...")
@@ -184,6 +188,7 @@ class ShazamPanel(QWidget):
         self.worker_thread.start()
 
     def show_results(self, candidates: list[SongCandidate], source_label: str):
+    def show_results(self, candidates: list[SongCandidate], source_label: str):
         self.clear_result_cards()
         if not candidates:
             self.status_label.setText(f"No match found for {source_label}.")
@@ -201,6 +206,7 @@ class ShazamPanel(QWidget):
         pass
 
     def open_to_lan(self):
+    def open_to_lan(self):
         self.lan_button.setEnabled(False)
         self.lan_button.setText("Opening...")
         self.server_thread = ServerThread()
@@ -208,19 +214,27 @@ class ShazamPanel(QWidget):
         self.server_thread.start()
 
     def server_open(self, _url: str):
-        QTimer.singleShot(1000, lambda: (
-            self.lan_button.setText("Connected"),
-            self.url_address.setText(f"https://{get_lan_ip()}:8443 or https://{local_hostname()}:8443")
-        ))
+        QTimer.singleShot(
+            1000,
+            lambda: (
+                self.lan_button.setText("Connected"),
+                self.url_address.setText(
+                    f"https://{get_lan_ip()}:8443 or https://{local_hostname()}:8443"
+                ),
+            ),
+        )
 
+    def show_error(self, message: str):
     def show_error(self, message: str):
         self.clear_result_cards()
         self.status_label.setText(message)
 
     def clear_results(self):
+    def clear_results(self):
         self.clear_result_cards()
         self.status_label.setText("Ready")
 
+    def clear_result_cards(self):
     def clear_result_cards(self):
         while self.results_layout.count() > 1:
             item = self.results_layout.takeAt(0)
@@ -229,10 +243,12 @@ class ShazamPanel(QWidget):
                 widget.deleteLater()
 
     def release_worker(self):
+    def release_worker(self):
         self.worker = None
         self.worker_thread = None
         self.set_busy(False)
 
+    def set_busy(self, busy: bool):
     def set_busy(self, busy: bool):
         self.find_button.setEnabled(not busy)
         self.open_button.setEnabled(not busy)

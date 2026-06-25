@@ -21,7 +21,6 @@ def load_file(p: str | CanFSPath[str] | IO[bytes]):
 def peak_finding(
     data: np.ndarray,
     sr: int,
-    *,
     nperseg: int = 2048,
     noverlap: int = 1024,
     neighborhood_size: int = 15,

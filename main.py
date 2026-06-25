@@ -1,4 +1,3 @@
-import qdarktheme
 from PyQt6.QtGui import QIcon
 import sys
 from pathlib import Path
