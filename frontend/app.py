@@ -1,8 +1,6 @@
 import qdarktheme
 from pathlib import Path
-
-from PyQt6.QtWidgets import QHBoxLayout, QMainWindow, QWidget, QPushButton
-
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QMainWindow, QWidget
 from .player import SpotifyPlayer
 from .shazam import ShazamPanel
 
@@ -14,35 +12,39 @@ class MusicAppWindow(QMainWindow):
         self.db_path = root_dir / "data1.db"
 
         self.setWindowTitle("SpotiRec")
-        self.setMinimumSize(1060, 720)
+        self.setMinimumSize(1100, 700)
 
         central = QWidget()
         central.setObjectName("appRoot")
         self.setCentralWidget(central)
 
-        layout = QHBoxLayout(central)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(16)
+        main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
+
+        self.shazam = ShazamPanel(root_dir, self.db_path)
+        self.shazam.setMinimumWidth(360)
 
         self.player = SpotifyPlayer()
-        self.shazam = ShazamPanel(self.db_path)
 
-        layout.addWidget(self.player, stretch=3)
-        # layout.addWidget(self.shazam, stretch=1)
-        self.shazam_button = QPushButton("Find the song!")
-        self.shazam_button.clicked.connect(self.toggle_shazam_window)
-        layout.addWidget(self.shazam_button)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.VLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setObjectName("panelSeparator")
+
+        main_layout.addWidget(self.shazam, stretch=2)
+        main_layout.addWidget(separator)
+        main_layout.addWidget(self.player, stretch=3)
+
+        # Cross?panel: YT Search from Shazam
+        self.shazam._emit_search_request = self.player.search
 
         self.apply_styles()
 
-    def toggle_shazam_window(self):
-        if self.shazam.isVisible():
-            self.shazam.hide()
-
-        else:
-            self.shazam.show()
-
-    def apply_styles(self):
+    def apply_styles(self) -> None:
         with open("frontend/style.qss", "r") as f:
-            # self.setStyleSheet(f.read())
-            qdarktheme.setup_theme(additional_qss=f.read())
+            custom_qss = f.read()
+        qdarktheme.setup_theme(
+            theme="dark",
+            additional_qss=custom_qss,
+        )
