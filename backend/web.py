@@ -1,4 +1,5 @@
-from backend.recognizer import SongCandidate, SongRecognizer, _handle_recorded_audio
+from backend.recognizer import SongCandidate, SongRecognizer
+from backend.microphone import _handle_recorded_audio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 

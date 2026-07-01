@@ -68,11 +68,6 @@ class HistoryPage(QWidget):
                 widget.deleteLater()
 
         self.tracks = self.db.get_history()
-        self.status_label.setText(
-            f"{len(self.tracks)} recent play{'s' if len(self.tracks) != 1 else ''}"
-            if self.tracks
-            else "No playback history yet."
-        )
 
         for index, track in enumerate(self.tracks):
             row = QFrame()

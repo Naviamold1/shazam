@@ -1,121 +1,101 @@
 import numpy as np
 from scipy.io import wavfile
 
-from backend.db import DBManager
-from backend.main import combinatorial_hashing, load_file, peak_finding
+from backend.main import (
+    combinatorial_hashing,
+    create_address,
+    fingerprint_file,
+    load_file,
+    peak_finding,
+)
 
 
-def test_load_file_downsamples_by_four(tmp_path):
-    sample_rate = 8_000
-    duration = 1.0
-    times = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    data = np.sin(2 * np.pi * 440 * times).astype(np.float32)
-    path = tmp_path / "tone.wav"
-    wavfile.write(path, sample_rate, data)
+def test_load_file_converts_stereo_and_resamples(tmp_path):
+    source_rate = 22_050
+    duration = 0.2
+    times = np.arange(int(source_rate * duration)) / source_rate
+    mono = np.sin(2 * np.pi * 440 * times)
+    stereo = np.column_stack((mono, mono * 0.5)).astype(np.float32)
+    path = tmp_path / "stereo.wav"
+    wavfile.write(path, source_rate, stereo)
 
-    loaded, loaded_sample_rate = load_file(path)
+    data, sample_rate = load_file(path)
 
-    assert loaded_sample_rate == sample_rate // 4
-    assert abs((loaded.size / loaded_sample_rate) - duration) < 0.01
+    assert sample_rate == 11_025
+    assert data.dtype == np.float32
+    assert data.ndim == 1
+    assert data.size == int(sample_rate * duration)
+
+
+def test_peak_finding_handles_short_or_invalid_audio():
+    for data, sample_rate in (
+        (np.ones(1_023), 11_025),
+        (np.ones(1_024), 0),
+    ):
+        frequencies, times = peak_finding(data, sample_rate)
+
+        assert frequencies.size == 0
+        assert times.size == 0
 
 
 def test_peak_finding_returns_time_ordered_tone_peaks():
-    sample_rate = 8_000
-    duration = 1.0
-    times = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    sample_rate = 11_025
+    times = np.arange(sample_rate) / sample_rate
     data = np.sin(2 * np.pi * 440 * times)
 
-    peak_frequencies, peak_times = peak_finding(
-        data,
-        sample_rate,
-        nperseg=512,
-        noverlap=256,
-        neighborhood_size=7,
-        percentile=95,
-    )
+    frequencies, peak_times = peak_finding(data, sample_rate)
 
-    assert peak_frequencies.size > 0
+    assert frequencies.size > 0
+    assert frequencies.shape == peak_times.shape
     assert np.all(np.diff(peak_times) >= 0)
-    assert np.any(np.isclose(peak_frequencies, 440, atol=25))
+    assert np.any(np.isclose(frequencies, 440, atol=15))
 
 
-def test_peak_finding_handles_short_clips():
-    peak_frequencies, peak_times = peak_finding(
-        np.ones(16),
-        8_000,
-        nperseg=512,
-        noverlap=256,
-        neighborhood_size=7,
-    )
+def test_create_address_packs_quantized_values():
+    address = create_address(1_000, 2_000, 0.125)
 
-    assert peak_frequencies.shape == peak_times.shape
+    assert address == (100 << 23) | (200 << 14) | 125
 
 
-def test_peak_finding_limits_peaks_without_breaking_time_order():
-    sample_rate = 8_000
-    duration = 1.0
-    times = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    data = (
-        np.sin(2 * np.pi * 440 * times)
-        + 0.6 * np.sin(2 * np.pi * 880 * times)
-        + 0.3 * np.sin(2 * np.pi * 1760 * times)
-    )
+def test_combinatorial_hashing_sorts_peaks_and_pairs_targets():
+    frequencies = np.array([300.0, 100.0, 200.0])
+    times = np.array([0.2, 0.0, 0.1])
 
-    peak_frequencies, peak_times = peak_finding(
-        data,
-        sample_rate,
-        nperseg=512,
-        noverlap=256,
-        neighborhood_size=5,
-        percentile=85,
-        max_peaks=10,
-    )
-
-    assert peak_frequencies.size <= 10
-    assert np.all(np.diff(peak_times) >= 0)
-
-
-def test_combinatorial_hashing_quantizes_peaks_and_anchor_time():
-    peak_frequencies = np.array([100.0, 200.0, 300.0])
-    peak_times = np.array([0.0, 0.1, 0.2])
-
-    hashes = combinatorial_hashing(
-        peak_frequencies,
-        peak_times,
-        min_time_between_peaks=0.05,
-        max_time_between_peaks=0.5,
-        max_targets=2,
-        freq_bin_hz=10,
-        time_bin_seconds=0.01,
-    )
+    hashes = combinatorial_hashing(frequencies, times)
 
     assert hashes == [
-        ("10:20:10", 0),
-        ("10:30:20", 0),
-        ("20:30:10", 10),
+        (str(create_address(100, 200, 0.1)), 0),
+        (str(create_address(100, 300, 0.2)), 0),
+        (str(create_address(200, 300, 0.1)), 100),
     ]
 
 
-def test_find_song_votes_by_consistent_time_offset(tmp_path):
-    db = DBManager(tmp_path / "fingerprints.db")
-    song_id = db.add_songs([("Synthetic Song", None, None)])
-    db.add_hashes(
-        [
-            ("10:20:10", 100, song_id),
-            ("20:30:10", 110, song_id),
-            ("30:40:10", 120, song_id),
-        ]
+def test_combinatorial_hashing_includes_song_id():
+    hashes = combinatorial_hashing(
+        np.array([100.0, 200.0]),
+        np.array([0.25, 0.5]),
+        song_id="song-1",
     )
 
-    matches = db.find_song(
-        [
-            ("10:20:10", 40),
-            ("20:30:10", 50),
-            ("30:40:10", 60),
-        ]
+    assert hashes == [(str(create_address(100, 200, 0.25)), 250, "song-1")]
+
+
+def test_fingerprint_file_composes_pipeline(monkeypatch):
+    expected_data = np.array([1.0, 2.0])
+    expected_frequencies = np.array([100.0, 200.0])
+    expected_times = np.array([0.0, 0.1])
+
+    monkeypatch.setattr(
+        "backend.main.load_file",
+        lambda path: (expected_data, 11_025),
+    )
+    monkeypatch.setattr(
+        "backend.main.peak_finding",
+        lambda data, sample_rate: (expected_frequencies, expected_times),
     )
 
-    assert matches[0][0] == song_id
-    assert matches[0][1] == "Synthetic Song"
-    assert matches[0][4] == 60
-    assert matches[0][5] == 3
+    result = fingerprint_file("recording.wav", "song-1")
+
+    assert result == [
+        (str(create_address(100, 200, 0.1)), 0, "song-1"),
+    ]

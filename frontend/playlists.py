@@ -102,7 +102,6 @@ class PlaylistWindow(QWidget):
 
     def download_all(self):
         if not self.tracks:
-            self.status_label.setText("This playlist is empty.")
             return
         destination = QFileDialog.getExistingDirectory(
             self,
@@ -116,7 +115,6 @@ class PlaylistWindow(QWidget):
 
     def fingerprint_all(self):
         if not self.tracks:
-            self.status_label.setText("This playlist is empty.")
             return
         self._start_task(
             PlaylistFingerprintWorker(self.tracks, self.db.db_path),
@@ -258,7 +256,6 @@ class PlaylistsPage(QWidget):
     def prompt_add_song(self, result: dict):
         playlists = self.db.get_playlists()
         if not playlists:
-            self.status_label.setText("Create a playlist first.")
             return
 
         names = [name for _playlist_id, name, _created_at in playlists]
@@ -345,9 +342,3 @@ class PlaylistsPage(QWidget):
             self.grid.setColumnStretch(column, 1)
         self.grid.setRowStretch((len(playlists) // 4) + 1, 1)
 
-        count = len(playlists)
-        self.status_label.setText(
-            f"{count} playlist{'s' if count != 1 else ''}"
-            if count
-            else "No playlists yet."
-        )

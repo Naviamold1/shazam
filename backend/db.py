@@ -53,9 +53,9 @@ class DBManager:
         CREATE TABLE IF NOT EXISTS playlist_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             song_id TEXT NOT NULL,
-            track_order INTEGER,
             playlist_id INTEGER NOT NULL,
-            UNIQUE(playlist_id, track_order),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(playlist_id, song_id),
             FOREIGN KEY(song_id) REFERENCES songs(id),
             FOREIGN KEY(playlist_id) REFERENCES playlists(id)
         )
@@ -102,69 +102,25 @@ class DBManager:
             print(e)
 
     def replace_hashes(self, song_id: str, hashes: list[tuple[str, int, str]]):
-        with self.conn:
-            self.conn.execute("DELETE FROM hashes WHERE song_id = ?", (song_id,))
-            self.conn.executemany(
-                "INSERT INTO hashes (hash, time, song_id) VALUES (?, ?, ?)",
-                hashes,
-            )
-
-    def find_song(self, hashes: list[tuple[str, int]]):
-        hashes = list(hashes)
-        if not hashes:
-            return []
-
         curr = self.conn.cursor()
 
-        curr.execute("DROP TABLE IF EXISTS temp_hashes_list")
-        curr.execute("""
-        CREATE TEMP TABLE temp_hashes_list (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            hash TEXT,
-            time INTEGER
-        )
-        """)
-
+        curr.execute("DELETE FROM hashes WHERE song_id = ?", (song_id,))
         curr.executemany(
-            """
-        INSERT INTO temp_hashes_list (hash, time) VALUES (?, ?)
-        """,
-            [(i[0], i[1]) for i in hashes],
+            "INSERT INTO hashes (hash, time, song_id) VALUES (?, ?, ?)",
+            hashes,
         )
 
-        res = curr.execute(
-            """
-        SELECT
-            h.song_id,
-            s.song_name,
-            h.time AS db_time,
-            t.time AS recording_time,
-            (h.time - t.time) AS delta,
-            COUNT(*) as votes
-        FROM hashes h JOIN songs s ON h.song_id = s.id
-        JOIN temp_hashes_list t ON h.hash = t.hash
-        GROUP BY h.song_id, delta
-        ORDER BY votes DESC
-        LIMIT 5
-        """,
-        ).fetchall()
-
-        curr.execute("""
-        DROP TABLE temp_hashes_list
-        """)
-
-        return res
-
-    def create_playlist(self, name: str) -> int:
-        cursor = self.conn.execute(
+    def create_playlist(self, name: str):
+        curr = self.conn.cursor()
+        curr.execute(
             "INSERT INTO playlists (playlist_name) VALUES (?)",
             (name,),
         )
         self.conn.commit()
-        return int(cursor.lastrowid)
 
     def get_playlists(self) -> list[tuple[int, str, str]]:
-        return self.conn.execute(
+        curr = self.conn.cursor()
+        return curr.execute(
             """
             SELECT id, playlist_name, created_at
             FROM playlists
@@ -175,53 +131,27 @@ class DBManager:
     def add_track_to_playlist(
         self,
         playlist_id: int,
-        title: str,
-        artist: str | None,
         webpage_url: str,
-    ) -> bool:
-        existing = self.conn.execute(
+    ):
+        curr = self.conn.cursor()
+        curr.execute(
             """
-            SELECT 1 FROM playlist_entries
-            WHERE playlist_id = ? AND song_id = ?
+            INSERT OR IGNORE INTO playlist_entries (song_id, playlist_id)
+            VALUES (?, ?)
             """,
-            (playlist_id, webpage_url),
-        ).fetchone()
-        if existing:
-            return False
-
-        self.conn.execute(
-            """
-            INSERT OR IGNORE INTO songs (id, song_name, song_author, song_genre)
-            VALUES (?, ?, ?, NULL)
-            """,
-            (webpage_url, title, artist),
-        )
-        next_order = self.conn.execute(
-            """
-            SELECT COALESCE(MAX(track_order), 0) + 1
-            FROM playlist_entries
-            WHERE playlist_id = ?
-            """,
-            (playlist_id,),
-        ).fetchone()[0]
-        self.conn.execute(
-            """
-            INSERT INTO playlist_entries (song_id, track_order, playlist_id)
-            VALUES (?, ?, ?)
-            """,
-            (webpage_url, next_order, playlist_id),
+            (webpage_url, playlist_id),
         )
         self.conn.commit()
-        return True
 
     def get_playlist_tracks(self, playlist_id: int) -> list[dict]:
-        rows = self.conn.execute(
+        curr = self.conn.cursor()
+        rows = curr.execute(
             """
             SELECT s.song_name, s.song_author, s.id
             FROM playlist_entries e
             JOIN songs s ON s.id = e.song_id
             WHERE e.playlist_id = ?
-            ORDER BY e.track_order
+            ORDER BY e.created_at
             """,
             (playlist_id,),
         ).fetchall()
@@ -241,21 +171,23 @@ class DBManager:
         artist: str | None,
         webpage_url: str,
     ):
-        self.conn.execute(
+        curr = self.conn.cursor()
+        curr.execute(
             """
             INSERT OR IGNORE INTO songs (id, song_name, song_author, song_genre)
             VALUES (?, ?, ?, NULL)
             """,
             (webpage_url, title, artist),
         )
-        self.conn.execute(
+        curr.execute(
             "INSERT INTO history (song_id) VALUES (?)",
             (webpage_url,),
         )
         self.conn.commit()
 
     def get_history(self, limit: int = 100) -> list[dict]:
-        rows = self.conn.execute(
+        curr = self.conn.cursor()
+        rows = curr.execute(
             """
             SELECT s.song_name, s.song_author, s.id, h.created_at
             FROM history h

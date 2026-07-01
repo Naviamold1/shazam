@@ -2,735 +2,195 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Shazam</title>
     <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
-        background: #000;
-        color: #fff;
-      }
-
       * {
         box-sizing: border-box;
       }
 
-      html,
       body {
-        min-height: 100%;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
         margin: 0;
+        padding: 24px;
+        background: #111;
+        color: #fff;
+        font-family: system-ui, sans-serif;
       }
 
-      body {
-        background: #000;
-        color: #fff;
-        min-height: 100svh;
-        overflow-x: hidden;
+      main {
+        width: min(100%, 480px);
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0 0 24px;
       }
 
       button {
+        width: 180px;
+        height: 180px;
         border: 0;
-        color: inherit;
-        font: inherit;
-      }
-
-      .app {
-        display: grid;
-        grid-template-rows: minmax(440px, 58svh) auto;
-        min-height: 100svh;
-        padding: max(18px, env(safe-area-inset-top)) 18px
-          max(22px, env(safe-area-inset-bottom));
-      }
-
-      .listen-panel {
-        display: grid;
-        align-content: center;
-        justify-items: center;
-        gap: 22px;
-        min-height: 0;
-        text-align: center;
-      }
-
-      .brand {
-        display: grid;
-        gap: 8px;
-        justify-items: center;
-      }
-
-      .eyebrow {
-        color: #9b9b9b;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-      }
-
-      .headline {
-        margin: 0;
-        max-width: 12ch;
-        font-size: clamp(2.35rem, 13vw, 5rem);
-        font-weight: 800;
-        line-height: 0.92;
-      }
-
-      .listen-button {
-        position: relative;
-        display: grid;
-        place-items: center;
-        width: min(74vw, 310px);
-        aspect-ratio: 1;
-        margin: 6px 0;
         border-radius: 50%;
-        background:
-          radial-gradient(
-            circle at 35% 30%,
-            rgba(255, 255, 255, 0.28),
-            transparent 24%
-          ),
-          linear-gradient(145deg, #1f1f1f, #070707 58%, #171717);
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-          inset 0 -18px 44px rgba(255, 255, 255, 0.04),
-          0 0 0 10px rgba(255, 255, 255, 0.035),
-          0 28px 90px rgba(255, 255, 255, 0.12);
-        cursor: pointer;
-        isolation: isolate;
-        touch-action: manipulation;
-        transition:
-          transform 180ms ease,
-          box-shadow 180ms ease,
-          background 180ms ease;
-      }
-
-      .listen-button::before,
-      .listen-button::after {
-        position: absolute;
-        content: "";
-        border-radius: inherit;
-        pointer-events: none;
-      }
-
-      .listen-button::before {
-        inset: 16%;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-      }
-
-      .listen-button::after {
-        inset: -12px;
-        z-index: -1;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      .listen-button:active {
-        transform: scale(0.975);
-      }
-
-      .listen-button:focus-visible {
-        outline: 3px solid #fff;
-        outline-offset: 7px;
-      }
-
-      .listen-button.is-recording {
-        background:
-          radial-gradient(
-            circle at 50% 42%,
-            rgba(255, 255, 255, 0.34),
-            transparent 24%
-          ),
-          linear-gradient(145deg, #2b2b2b, #090909 62%, #242424);
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-          0 0 0 12px rgba(255, 255, 255, 0.06),
-          0 0 0 28px rgba(255, 255, 255, 0.025),
-          0 28px 100px rgba(255, 255, 255, 0.16);
-      }
-
-      .button-copy {
-        display: grid;
-        gap: 10px;
-        justify-items: center;
-      }
-
-      .source-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 14px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.05);
-        color: #f3f3f3;
-        font-size: 0.9rem;
+        background: #1db954;
+        color: #fff;
+        font: inherit;
+        font-size: 1.2rem;
         font-weight: 700;
         cursor: pointer;
       }
 
-      .source-toggle[aria-pressed="true"] {
-        border-color: rgba(255, 255, 255, 0.28);
-        background: rgba(255, 255, 255, 0.12);
+      button.recording {
+        background: #e53935;
       }
 
-      .source-toggle:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
       }
 
-      .button-icon {
-        display: block;
-        width: 46px;
-        height: 46px;
+      #status {
+        min-height: 24px;
+        margin: 24px 0;
+        color: #bbb;
       }
 
-      .button-label {
-        font-size: clamp(1.1rem, 4.2vw, 1.45rem);
-        font-weight: 800;
-      }
-
-      .button-hint {
-        color: #bdbdbd;
-        font-size: 0.9rem;
-        font-weight: 600;
-      }
-
-      .status {
-        min-height: 1.45em;
-        margin: 0;
-        color: #c8c8c8;
-        font-size: 0.95rem;
-        line-height: 1.45;
-      }
-
-      .results {
-        display: grid;
-        align-content: start;
-        align-items: start;
-        gap: 14px;
-        width: min(100%, 720px);
-        margin: 0 auto;
-      }
-
-      .result-card {
-        display: grid;
-        gap: 12px;
-        padding: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        background: #0b0b0b;
-      }
-
-      .best-match {
-        gap: 14px;
-        padding: 20px;
-        background: #fff;
-        color: #000;
-      }
-
-      .section-label {
-        margin: 0;
-        color: #9b9b9b;
-        font-size: 0.73rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      .best-match .section-label {
-        color: #555;
-      }
-
-      .song-title {
-        margin: 0;
-        overflow-wrap: anywhere;
-        font-size: clamp(1.45rem, 7vw, 2.2rem);
-        font-weight: 850;
-        line-height: 1.02;
-      }
-
-      .candidate-title {
-        margin: 0;
-        overflow-wrap: anywhere;
-        font-size: 1.02rem;
-        font-weight: 760;
-        line-height: 1.2;
-      }
-
-      .metrics {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .metric {
-        display: grid;
-        gap: 3px;
-        min-width: 0;
-      }
-
-      .metric-value {
-        font-size: 0.95rem;
-        font-weight: 780;
-      }
-
-      .metric-label {
-        color: #7b7b7b;
-        font-size: 0.68rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .candidate-list {
-        display: grid;
-        gap: 10px;
+      #results {
         margin: 0;
         padding: 0;
         list-style: none;
+        text-align: left;
       }
 
-      .candidate {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px 14px;
-        align-items: center;
-        padding: 14px 15px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+      #results li {
+        margin-top: 8px;
+        padding: 12px;
         border-radius: 8px;
-        background: #080808;
-      }
-
-      .candidate-score {
-        min-width: 4.5ch;
-        text-align: right;
-        font-size: 1rem;
-        font-weight: 820;
-      }
-
-      .candidate-meta {
-        grid-column: 1 / -1;
-        color: #8d8d8d;
-        font-size: 0.82rem;
-        font-weight: 650;
-      }
-
-      .empty {
-        margin: 0;
-        padding: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        color: #9c9c9c;
-        background: #080808;
-        text-align: center;
-      }
-
-      @media (min-width: 720px) {
-        .app {
-          grid-template-rows: minmax(520px, 64vh) auto;
-          padding-inline: 28px;
-        }
-
-        .listen-button {
-          width: min(42vw, 340px);
-        }
-
-        .results {
-          padding-bottom: 28px;
-        }
+        background: #222;
       }
     </style>
   </head>
   <body>
-    <main class="app">
-      <section class="listen-panel" aria-labelledby="page-title">
-        <div class="brand">
-          <p class="eyebrow">Song finder</p>
-          <h1 id="page-title" class="headline">Tap to listen</h1>
-        </div>
-
-        <div>
-          Navigate to <span id="url"></span> to listen from the mobile device!
-        </div>
-        <button
-          id="sourceModeButton"
-          class="source-toggle"
-          type="button"
-          aria-pressed="false"
-        >
-          <span id="sourceModeLabel">Capture: microphone</span>
-        </button>
-
-        <button
-          id="listenButton"
-          class="listen-button"
-          type="button"
-          aria-describedby="statusText"
-        >
-          <span class="button-copy">
-            <svg class="button-icon" viewBox="0 0 48 48" aria-hidden="true">
-              <path
-                d="M24 4c5.5 0 10 4.5 10 10v10c0 5.5-4.5 10-10 10s-10-4.5-10-10V14C14 8.5 18.5 4 24 4Zm15.5 19.5a1.8 1.8 0 0 1 1.8 1.8c0 8.4-6.4 15.3-14.5 16.2v3.1h5.7a1.7 1.7 0 1 1 0 3.4h-17a1.7 1.7 0 1 1 0-3.4h5.7v-3.1A16.3 16.3 0 0 1 6.7 25.3a1.8 1.8 0 0 1 3.6 0 12.7 12.7 0 1 0 25.4 0 1.8 1.8 0 0 1 1.8-1.8Z"
-                fill="currentColor"
-              />
-            </svg>
-            <span id="buttonLabel" class="button-label">Listen</span>
-            <span id="buttonHint" class="button-hint">Tap once to start</span>
-          </span>
-        </button>
-
-        <p id="statusText" class="status" role="status">Ready when you are.</p>
-      </section>
-
-      <section id="results" class="results" aria-live="polite">
-        <p class="empty">
-          Recognized songs and close candidates will appear here.
-        </p>
-      </section>
+    <main>
+      <h1>Identify Song!</h1>
+      <button id="listen" type="button">Find Song</button>
+      <p id="status" role="status">Ready</p>
+      <ul id="results" aria-live="polite"></ul>
     </main>
 
     <script>
-      const urlBar = document.getElementById("url");
-      urlBar.textContent = window.location.href;
-      const listenButton = document.getElementById("listenButton");
-      const sourceModeButton = document.getElementById("sourceModeButton");
-      const sourceModeLabel = document.getElementById("sourceModeLabel");
-      const buttonLabel = document.getElementById("buttonLabel");
-      const buttonHint = document.getElementById("buttonHint");
-      const statusText = document.getElementById("statusText");
+      const listenButton = document.getElementById("listen");
+      const status = document.getElementById("status");
       const results = document.getElementById("results");
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
-      ws.binaryType = "arraybuffer";
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const socket = new WebSocket(`${protocol}//${location.host}/ws`);
 
-      let mediaStream;
-      /** @type {MediaRecorder | null} */
-      let mediaRecorder;
-      let mediaChunks = [];
-      let captureMode = "microphone";
-      let isRecording = false;
-      let isWaitingForMatch = false;
-      let recordingStartedAt = 0;
-      const minimumRecordingMs = 1500;
-      const screenShareSupported = Boolean(
-        navigator.mediaDevices?.getDisplayMedia,
-      );
+      let stream;
+      let recorder;
+      let chunks = [];
+      let startedAt = 0;
 
-      updateSourceModeButton();
-
-      ws.addEventListener("open", () => {
-        setStatus("Ready when you are.");
-      });
-
-      ws.addEventListener("close", () => {
-        setStatus(`WebSocket disconnected from ${window.location.host}.`);
-        renderEmpty("Refresh after confirming the server is still running.");
+      socket.addEventListener("close", () => {
+        status.textContent = "Disconnected. Refresh the page to reconnect.";
         listenButton.disabled = true;
       });
 
-      ws.addEventListener("error", () => {
-        setStatus(
-          `Could not connect to ${wsProtocol}//${window.location.host}/ws.`,
-        );
-        renderEmpty(
-          "If this page is HTTPS, the WebSocket must use WSS and the certificate must be trusted.",
-        );
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(event.data);
+        listenButton.disabled = false;
+        listenButton.textContent = "Start listening";
+
+        if (message.type === "match") {
+          showResults(message.candidates || []);
+        }
       });
 
-      ws.addEventListener("message", (event) => {
-        const payload = JSON.parse(event.data);
-        isWaitingForMatch = false;
-        updateButton();
-
-        if (payload.type !== "match") {
-          return;
-        }
-
-        renderCandidates(payload.candidates ?? []);
-      });
-
-      sourceModeButton.addEventListener("click", () => {
-        if (isRecording || isWaitingForMatch) {
-          return;
-        }
-
-        captureMode = captureMode === "microphone" ? "screen" : "microphone";
-        updateSourceModeButton();
-        setStatus(
-          captureMode === "screen"
-            ? "Screen-share audio selected. Tap to start listening."
-            : "Microphone input selected. Tap to start listening.",
-        );
-      });
-
-      listenButton.addEventListener("click", async () => {
-        if (isWaitingForMatch) {
-          return;
-        }
-
-        if (isRecording) {
-          await stopRecording();
+      listenButton.addEventListener("click", () => {
+        if (recorder?.state === "recording") {
+          stopListening();
         } else {
-          await startRecording();
+          startListening();
         }
       });
 
-      async function startRecording() {
+      async function startListening() {
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+          status.textContent = "Microphone access is not available.";
+          return;
+        }
+
+        if (socket.readyState !== WebSocket.OPEN) {
+          status.textContent = "Still connecting to the recognizer.";
+          return;
+        }
+
         try {
-          if (!window.isSecureContext) {
-            setStatus("Microphone needs HTTPS on mobile.");
-            renderEmpty(
-              "Open the HTTPS URL and trust the local certificate on this device.",
-            );
-            return;
-          }
-
-          if (captureMode === "screen") {
-            if (!navigator.mediaDevices?.getDisplayMedia) {
-              setStatus("Screen-share audio is not supported in this browser.");
-              renderEmpty(
-                "Try a Chromium-based browser or switch back to microphone input.",
-              );
-              return;
-            }
-
-            mediaStream = await navigator.mediaDevices.getDisplayMedia({
-              video: true,
-              audio: true,
-            });
-
-            if (!mediaStream.getAudioTracks().length) {
-              mediaStream.getTracks().forEach((track) => track.stop());
-              setStatus(
-                "Screen share did not include audio. Using microphone instead.",
-              );
-              captureMode = "microphone";
-              updateSourceModeButton();
-              mediaStream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-              });
-            }
-          } else {
-            if (!navigator.mediaDevices?.getUserMedia) {
-              setStatus("This browser cannot access the microphone here.");
-              renderEmpty(
-                "Mobile browsers require HTTPS and microphone permission.",
-              );
-              return;
-            }
-
-            mediaStream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
-            });
-          }
-
-          if (ws.readyState !== WebSocket.OPEN) {
-            setStatus("Recognizer is not connected yet.");
-            renderEmpty("Refresh after the WebSocket connects.");
-            return;
-          }
-
-          mediaChunks = [];
-
-          mediaRecorder = new MediaRecorder(mediaStream);
-
-          mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              mediaChunks.push(event.data);
-            }
-          };
-
-          mediaRecorder.start();
-          recordingStartedAt = Date.now();
-          isRecording = true;
-          updateSourceModeButton();
-          setStatus(
-            `Listening through ${captureMode === "screen" ? "screen-share audio" : "microphone"}...`,
-          );
-          renderEmpty("Listening for a match.");
-          updateButton();
-        } catch (err) {
-          console.error("Microphone access denied or error occurred:", err);
-          setStatus(`Microphone error: ${err.name || "unknown"}.`);
-          renderEmpty(
-            err.message || "Microphone permission is needed to listen.",
-          );
-          isRecording = false;
-          mediaRecorder = null;
-          updateButton();
-        }
-      }
-
-      async function stopRecording() {
-        if (!mediaRecorder || mediaRecorder.state === "inactive") {
-          return;
-        }
-
-        const recorderStopped = new Promise((resolve, reject) => {
-          mediaRecorder.addEventListener("stop", () => resolve(), {
-            once: true,
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          chunks = [];
+          recorder = new MediaRecorder(stream);
+          recorder.addEventListener("dataavailable", (event) => {
+            if (event.data.size) chunks.push(event.data);
           });
-          mediaRecorder.addEventListener(
-            "error",
-            () => reject(new Error("Recording failed.")),
-            { once: true },
-          );
-        });
-
-        mediaRecorder.stop();
-        await recorderStopped;
-
-        const recordingDurationMs = Date.now() - recordingStartedAt;
-        const recordingBlob = new Blob(mediaChunks, {
-          type: mediaRecorder.mimeType || "audio/webm",
-        });
-        const recordingBytes = await recordingBlob.arrayBuffer();
-
-        mediaStream.getTracks().forEach((track) => track.stop());
-
-        mediaRecorder = null;
-        mediaStream = null;
-        mediaChunks = [];
-        isRecording = false;
-        updateSourceModeButton();
-
-        if (recordingDurationMs < minimumRecordingMs) {
-          setStatus("Keep the clip a little longer, then try again.");
-          renderEmpty("The clip was too short to match.");
-          updateButton();
-          return;
+          recorder.start();
+          startedAt = Date.now();
+          listenButton.textContent = "Stop and identify";
+          listenButton.classList.add("recording");
+          status.textContent = "Listening through microphone...";
+          results.replaceChildren();
+        } catch (error) {
+          stopMicrophone();
+          status.textContent = error.message || "Could not access microphone.";
         }
-
-        if (ws.readyState !== WebSocket.OPEN) {
-          setStatus("Recognizer is not connected. Refresh to reconnect.");
-          renderEmpty("Connection is not ready.");
-          updateButton();
-          return;
-        }
-
-        ws.send(recordingBytes);
-
-        isWaitingForMatch = true;
-        setStatus("Finding the closest songs...");
-        renderEmpty("Analyzing your recording.");
-        updateButton();
       }
 
-      function renderCandidates(candidates) {
+      function stopListening() {
+        recorder.addEventListener(
+          "stop",
+          async () => {
+            stopMicrophone();
+            listenButton.classList.remove("recording");
+
+            if (Date.now() - startedAt < 1500) {
+              status.textContent = "Record for a little longer and try again.";
+              listenButton.textContent = "Start listening";
+              return;
+            }
+
+            const audio = new Blob(chunks, {
+              type: recorder.mimeType || "audio/webm",
+            });
+            socket.send(await audio.arrayBuffer());
+            listenButton.textContent = "Matching...";
+            listenButton.disabled = true;
+            status.textContent = "Finding a match...";
+          },
+          { once: true },
+        );
+
+        recorder.stop();
+      }
+
+      function stopMicrophone() {
+        stream?.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+
+      function showResults(candidates) {
         results.replaceChildren();
 
         if (!candidates.length) {
-          setStatus("No match found. Try a longer clip.");
-          renderEmpty("No candidates yet.");
+          status.textContent = "No match found. Try a longer clip.";
           return;
         }
 
-        const [best, ...others] = candidates;
-        setStatus(`${best.title} looks like the best match.`);
-
-        const bestCard = document.createElement("article");
-        bestCard.className = "result-card best-match";
-        bestCard.innerHTML = `
-          <p class="section-label">Best match</p>
-          <h2 class="song-title"></h2>
-          <div class="metrics">
-            ${metricTemplate("Confidence", formatPercent(best.confidence))}
-            ${metricTemplate("Votes", best.votes)}
-            ${metricTemplate("Offset", best.offset)}
-          </div>
-        `;
-        bestCard.querySelector(".song-title").textContent = best.title;
-        results.appendChild(bestCard);
-
-        if (!others.length) {
-          return;
-        }
-
-        const listCard = document.createElement("article");
-        listCard.className = "result-card";
-        listCard.innerHTML = `
-          <p class="section-label">Other candidates</p>
-          <ul class="candidate-list"></ul>
-        `;
-        const list = listCard.querySelector(".candidate-list");
-
-        for (const candidate of others) {
+        status.textContent = `Best match: ${candidates[0].title}`;
+        for (const candidate of candidates) {
           const item = document.createElement("li");
-          item.className = "candidate";
-          item.innerHTML = `
-            <h3 class="candidate-title"></h3>
-            <span class="candidate-score">${formatPercent(candidate.confidence)}</span>
-            <span class="candidate-meta">${candidate.votes} votes &middot; offset ${candidate.offset}</span>
-          `;
-          item.querySelector(".candidate-title").textContent = candidate.title;
-          list.appendChild(item);
+          item.textContent = `${candidate.title} — ${Math.round(candidate.confidence || 0)}%`;
+          results.appendChild(item);
         }
-
-        results.appendChild(listCard);
-      }
-
-      function renderEmpty(message) {
-        const empty = document.createElement("p");
-        empty.className = "empty";
-        empty.textContent = message;
-        results.replaceChildren(empty);
-      }
-
-      function updateSourceModeButton() {
-        const isScreenMode = captureMode === "screen";
-        sourceModeButton.setAttribute("aria-pressed", String(isScreenMode));
-        sourceModeLabel.textContent = isScreenMode
-          ? "Capture: screen audio"
-          : "Capture: microphone";
-        sourceModeButton.disabled =
-          isRecording || isWaitingForMatch || !screenShareSupported;
-        sourceModeButton.title = screenShareSupported
-          ? isScreenMode
-            ? "Switch to microphone input"
-            : "Switch to screen-share audio"
-          : "Screen-share audio is unavailable in this browser";
-      }
-
-      function updateButton() {
-        listenButton.classList.toggle("is-recording", isRecording);
-        listenButton.disabled = isWaitingForMatch;
-
-        if (isWaitingForMatch) {
-          buttonLabel.textContent = "Matching";
-          buttonHint.textContent = "Hang tight";
-        } else if (isRecording) {
-          buttonLabel.textContent = "Stop";
-          buttonHint.textContent = "Tap to identify";
-        } else {
-          buttonLabel.textContent = "Listen";
-          buttonHint.textContent = "Tap once to start";
-        }
-      }
-
-      function setStatus(message) {
-        statusText.textContent = message;
-      }
-
-      function metricTemplate(label, value) {
-        return `
-          <div class="metric">
-            <span class="metric-value">${value}</span>
-            <span class="metric-label">${label}</span>
-          </div>
-        `;
-      }
-
-      function formatPercent(value) {
-        return `${Math.round(Number(value) || 0)}%`;
       }
     </script>
   </body>

@@ -4,7 +4,8 @@ from tempfile import TemporaryDirectory
 import yt_dlp
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
-from backend.recognizer import SongRecognizer, record_microphone_clip
+from backend.recognizer import SongRecognizer
+from backend.microphone import record_microphone_clip
 from backend.db import DBManager
 from backend.main import fingerprint_file
 from scripts.serve_web import get_lan_ip, open_lan
@@ -12,7 +13,6 @@ from scripts.serve_web import get_lan_ip, open_lan
 
 class RecognitionWorker(QObject):
     finished = pyqtSignal(list, str)
-    failed = pyqtSignal(str)
 
     def __init__(self, db_path: Path, mode: str, wav_path: Path | None = None):
         super().__init__()
@@ -22,24 +22,22 @@ class RecognitionWorker(QObject):
 
     def run(self):
         temp_path: Path | None = None
-        try:
-            if self.mode == "microphone":
-                temp_path = record_microphone_clip()
-                source_path = temp_path
-                source_label = "microphone recording"
-            elif self.wav_path is not None:
-                source_path = self.wav_path
-                source_label = self.wav_path.name
-            else:
-                raise RuntimeError("No audio source was selected.")
+        
+        if self.mode == "microphone":
+            temp_path = record_microphone_clip()
+            source_path = temp_path
+            source_label = "microphone recording"
+        elif self.wav_path is not None:
+            source_path = self.wav_path
+            source_label = self.wav_path.name
+        else:
+            raise RuntimeError("No audio source was selected.")
 
-            recognizer = SongRecognizer(self.db_path)
-            self.finished.emit(recognizer.recognize_file(source_path), source_label)
-        except Exception as exc:
-            self.failed.emit(str(exc))
-        finally:
-            if temp_path is not None:
-                temp_path.unlink(missing_ok=True)
+        recognizer = SongRecognizer(self.db_path)
+        self.finished.emit(recognizer.recognize_file(source_path), source_label)
+        
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 class ServerThread(QThread):
@@ -117,7 +115,7 @@ class YouTubeStreamWorker(QObject):
             if not stream_url and data.get("formats"):
                 stream_url = data["formats"][-1].get("url")
             if not stream_url:
-                raise RuntimeError("Could not resolve an audio stream for this video.")
+                print("error with the url")
 
             resolved = dict(self.result)
             resolved["stream_url"] = stream_url
@@ -142,9 +140,7 @@ class PlaylistDownloadWorker(QObject):
                 "no_warnings": True,
                 "format": "bestaudio/best",
                 "noplaylist": True,
-                "outtmpl": str(
-                    self.destination / "%(title)s [%(id)s].%(ext)s"
-                ),
+                "outtmpl": str(self.destination / "%(title)s [%(id)s].%(ext)s"),
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -194,7 +190,7 @@ class PlaylistFingerprintWorker(QObject):
                     with yt_dlp.YoutubeDL(options) as downloader:
                         downloader.download([track["webpage_url"]])
 
-                    song_id = track["webpage_url"].split("=")[1]
+                    song_id = track["webpage_url"]
                     hashes = fingerprint_file(output_base.with_suffix(".wav"), song_id)
                     db.replace_hashes(song_id, hashes)
 

@@ -32,7 +32,7 @@ class ClickSeekSlider(QSlider):
         self.sliderMoved.emit(value)
 
 
-def format_duration_ms(ms: int) -> str:
+def format_duration_ms(ms: int):
     seconds = ms // 1000
     minutes = seconds // 60
     seconds = seconds % 60
@@ -118,7 +118,7 @@ class PlayerControls(QFrame):
             QStyle.StandardPixmap.SP_MediaPlay,
             "Play",
             self.toggle_playback,
-            "playMediaButton"
+            "playMediaButton",
         )
         self.next_btn = self._media_button(
             QStyle.StandardPixmap.SP_MediaSkipForward,
@@ -170,7 +170,9 @@ class PlayerControls(QFrame):
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def _media_button(self, icon_type, tooltip, callback, classname: str = "mediaButton"):
+    def _media_button(
+        self, icon_type, tooltip, callback, classname: str = "mediaButton"
+    ):
         button = QPushButton()
         button.setObjectName(classname)
         button.setIcon(self.style().standardIcon(icon_type))
@@ -286,7 +288,6 @@ class PlayerControls(QFrame):
         )
         self.play_pause_button.setIcon(self.style().standardIcon(icon))
         self.play_pause_button.setToolTip("Pause" if is_playing else "Play")
-        self.visualizer.set_active(is_playing)
 
     def update_position(self, position_ms):
         if self.seek_slider.isSliderDown():

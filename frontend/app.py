@@ -111,7 +111,7 @@ class MusicAppWindow(QMainWindow):
         else:
             self.shazam.show()
 
-    def apply_styles(self) -> None:
+    def apply_styles(self):
         with open("frontend/style.qss", "r") as f:
             custom_qss = f.read()
 

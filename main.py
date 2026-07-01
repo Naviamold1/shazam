@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QApplication
 from frontend.app import MusicAppWindow
 
 
-def main() -> int:
+def main():
     app = QApplication(sys.argv)
     window = MusicAppWindow(Path(__file__).resolve().parent)
     app.setWindowIcon(QIcon("frontend/icon.jpg"))

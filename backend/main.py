@@ -6,17 +6,9 @@ from scipy import signal
 from scipy.io import wavfile
 
 
-TARGET_SAMPLE_RATE = 11025
-WINDOW_SIZE = 1024
-HOP_SIZE = WINDOW_SIZE // 2
-TARGET_ZONE_SIZE = 5
-MAX_FREQ_BITS = 9
-MAX_DELTA_BITS = 14
-FREQUENCY_BANDS = ((0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512))
-
-
 def load_file(p: str | CanFSPath[str] | IO[bytes]):
     sr, data = wavfile.read(p)
+    TARGET_SAMPLE_RATE = 11025
 
     if data.ndim > 1:
         data = data.mean(axis=1)
@@ -35,10 +27,10 @@ def load_file(p: str | CanFSPath[str] | IO[bytes]):
 def peak_finding(
     data: np.ndarray,
     sample_rate: int,
-    nperseg: int = WINDOW_SIZE,
-    noverlap: int = HOP_SIZE,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Pick strong frequency-band peaks from every STFT frame."""
+    nperseg = 1024
+    noverlap = nperseg // 2
+
     if data.size < nperseg or sample_rate <= 0:
         return np.array([]), np.array([])
 
@@ -56,6 +48,8 @@ def peak_finding(
     magnitudes = np.abs(zxx)
     if magnitudes.shape[1] == 0:
         return np.array([]), np.array([])
+
+    FREQUENCY_BANDS = ((0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512))
 
     frame_duration = (data.size / sample_rate) / magnitudes.shape[1]
     peaks = []
@@ -87,9 +81,9 @@ def peak_finding(
 
 
 def create_address(anchor_frequency, target_frequency, delta_seconds):
-    anchor_bits = int(anchor_frequency / 10) & ((1 << MAX_FREQ_BITS) - 1)
-    target_bits = int(target_frequency / 10) & ((1 << MAX_FREQ_BITS) - 1)
-    delta_bits = int(delta_seconds * 1000) & ((1 << MAX_DELTA_BITS) - 1)
+    anchor_bits = int(anchor_frequency / 10) & ((1 << 9) - 1)
+    target_bits = int(target_frequency / 10) & ((1 << 9) - 1)
+    delta_bits = int(delta_seconds * 1000) & ((1 << 14) - 1)
     return (anchor_bits << 23) | (target_bits << 14) | delta_bits
 
 
@@ -97,13 +91,13 @@ def combinatorial_hashing(
     frequencies: np.ndarray,
     times: np.ndarray,
     song_id: str | None = None,
-    max_targets: int = TARGET_ZONE_SIZE,
 ):
-    """Pair each peak with the next five peaks, as the Go implementation does."""
     order = np.lexsort((frequencies, times))
     frequencies = frequencies[order]
     times = times[order]
     hashes = {}
+
+    max_targets = 5
 
     for index, (anchor_frequency, anchor_time) in enumerate(zip(frequencies, times)):
         end = min(index + max_targets + 1, len(times))
