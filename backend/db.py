@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 class DBManager:
-    def __init__(self, db_path: str | Path = "data1.db"):
+    def __init__(self, db_path: str | Path = "data.db"):
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(self.db_path)
         self._create_tables()
@@ -101,6 +101,14 @@ class DBManager:
         except Exception as e:
             print(e)
 
+    def replace_hashes(self, song_id: str, hashes: list[tuple[str, int, str]]):
+        with self.conn:
+            self.conn.execute("DELETE FROM hashes WHERE song_id = ?", (song_id,))
+            self.conn.executemany(
+                "INSERT INTO hashes (hash, time, song_id) VALUES (?, ?, ?)",
+                hashes,
+            )
+
     def find_song(self, hashes: list[tuple[str, int]]):
         hashes = list(hashes)
         if not hashes:
@@ -146,3 +154,124 @@ class DBManager:
         """)
 
         return res
+
+    def create_playlist(self, name: str) -> int:
+        cursor = self.conn.execute(
+            "INSERT INTO playlists (playlist_name) VALUES (?)",
+            (name,),
+        )
+        self.conn.commit()
+        return int(cursor.lastrowid)
+
+    def get_playlists(self) -> list[tuple[int, str, str]]:
+        return self.conn.execute(
+            """
+            SELECT id, playlist_name, created_at
+            FROM playlists
+            ORDER BY id DESC
+            """
+        ).fetchall()
+
+    def add_track_to_playlist(
+        self,
+        playlist_id: int,
+        title: str,
+        artist: str | None,
+        webpage_url: str,
+    ) -> bool:
+        existing = self.conn.execute(
+            """
+            SELECT 1 FROM playlist_entries
+            WHERE playlist_id = ? AND song_id = ?
+            """,
+            (playlist_id, webpage_url),
+        ).fetchone()
+        if existing:
+            return False
+
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO songs (id, song_name, song_author, song_genre)
+            VALUES (?, ?, ?, NULL)
+            """,
+            (webpage_url, title, artist),
+        )
+        next_order = self.conn.execute(
+            """
+            SELECT COALESCE(MAX(track_order), 0) + 1
+            FROM playlist_entries
+            WHERE playlist_id = ?
+            """,
+            (playlist_id,),
+        ).fetchone()[0]
+        self.conn.execute(
+            """
+            INSERT INTO playlist_entries (song_id, track_order, playlist_id)
+            VALUES (?, ?, ?)
+            """,
+            (webpage_url, next_order, playlist_id),
+        )
+        self.conn.commit()
+        return True
+
+    def get_playlist_tracks(self, playlist_id: int) -> list[dict]:
+        rows = self.conn.execute(
+            """
+            SELECT s.song_name, s.song_author, s.id
+            FROM playlist_entries e
+            JOIN songs s ON s.id = e.song_id
+            WHERE e.playlist_id = ?
+            ORDER BY e.track_order
+            """,
+            (playlist_id,),
+        ).fetchall()
+        return [
+            {
+                "title": title,
+                "artist": artist or "Unknown artist",
+                "webpage_url": webpage_url,
+                "duration": None,
+            }
+            for title, artist, webpage_url in rows
+        ]
+
+    def add_history_entry(
+        self,
+        title: str,
+        artist: str | None,
+        webpage_url: str,
+    ):
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO songs (id, song_name, song_author, song_genre)
+            VALUES (?, ?, ?, NULL)
+            """,
+            (webpage_url, title, artist),
+        )
+        self.conn.execute(
+            "INSERT INTO history (song_id) VALUES (?)",
+            (webpage_url,),
+        )
+        self.conn.commit()
+
+    def get_history(self, limit: int = 100) -> list[dict]:
+        rows = self.conn.execute(
+            """
+            SELECT s.song_name, s.song_author, s.id, h.created_at
+            FROM history h
+            JOIN songs s ON s.id = h.song_id
+            ORDER BY h.id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [
+            {
+                "title": title,
+                "artist": artist or "Unknown artist",
+                "webpage_url": webpage_url,
+                "duration": None,
+                "played_at": played_at,
+            }
+            for title, artist, webpage_url, played_at in rows
+        ]

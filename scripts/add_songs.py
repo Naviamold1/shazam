@@ -51,11 +51,11 @@ def fingerprint_files():
         print(num)
 
     print(len(hashes))
-    db = DBManager()
+    db = DBManager("data.db")
     db.add_songs(songs_ids)
     db.add_hashes(hashes)
     print("added hashes")
-    
+
     # songs = [x.name for x in os.scandir("assets")]
     # obj.add_songs([(song.name.split(" - ")[0], song.name, None, None)])
     # obj.add_hashes(hash)

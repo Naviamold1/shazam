@@ -26,6 +26,8 @@ class CandidateCard(QFrame):
     def __init__(self, candidate: SongCandidate, rank: int):
         super().__init__()
         self.setObjectName("candidateCard")
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.setMinimumHeight(64)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(14, 10, 14, 10)
@@ -42,6 +44,7 @@ class CandidateCard(QFrame):
         title = QLabel(candidate.title)
         title.setObjectName("candidateTitle")
         title.setWordWrap(True)
+        title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         detail = QLabel(
             f"ID: {candidate.song_id} | Votes: {candidate.votes} | Offset: {candidate.offset}"
@@ -51,12 +54,14 @@ class CandidateCard(QFrame):
 
         confidence = QLabel(f"{candidate.confidence:.0f}%")
         confidence.setObjectName("confidenceLabel")
-        confidence.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        confidence.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         confidence.setFixedWidth(60)
 
-        # "Search on YouTube" button (text)
-        yt_btn = QPushButton("YT Search")
+        yt_btn = QPushButton("Search")
         yt_btn.setObjectName("playSmallButton")
+        yt_btn.setFixedWidth(72)
         yt_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         yt_btn.clicked.connect(lambda: self.search_requested.emit(candidate.title))
 
@@ -79,11 +84,11 @@ class ShazamPanel(QWidget):
 
         self.setObjectName("shazamPanel")
         self.setWindowTitle("Finder")
-        self.setMinimumSize(530, 360)
+        self.setMinimumSize(500, 560)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(20, 20, 20, 20)
-        root.setSpacing(16)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(10)
 
         title = QLabel("Shazam")
         title.setObjectName("shazamTitle")
@@ -97,7 +102,9 @@ class ShazamPanel(QWidget):
         self.find_button = QPushButton("Find Song")
         self.find_button.setObjectName("findButton")
         self.find_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.find_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.find_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
         self.find_button.clicked.connect(self.start_microphone_recognition)
 
         shadow = QGraphicsDropShadowEffect(self)
@@ -115,16 +122,25 @@ class ShazamPanel(QWidget):
         action_row.setSpacing(8)
         self.open_button = QPushButton("Open WAV")
         self.open_button.setObjectName("secondaryButton")
+        self.open_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.open_button.clicked.connect(self.pick_wav_file)
         self.lan_button = QPushButton("LAN")
         self.lan_button.setObjectName("secondaryButton")
+        self.lan_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.lan_button.clicked.connect(self.open_to_lan)
         self.clear_button = QPushButton("Clear")
         self.clear_button.setObjectName("ghostButton")
+        self.clear_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.clear_button.clicked.connect(self.clear_results)
-        action_row.addWidget(self.open_button)
-        action_row.addWidget(self.lan_button)
-        action_row.addWidget(self.clear_button)
+        action_row.addWidget(self.open_button, stretch=1)
+        action_row.addWidget(self.lan_button, stretch=1)
+        action_row.addWidget(self.clear_button, stretch=1)
 
         self.url_address = QLabel("LAN URL appears here.")
         self.url_address.setObjectName("urlAddress")
@@ -146,6 +162,9 @@ class ShazamPanel(QWidget):
         scroll_area.setObjectName("resultsArea")
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         scroll_area.setWidget(self.results_container)
 
         root.addWidget(title)
@@ -171,7 +190,9 @@ class ShazamPanel(QWidget):
 
     def start_worker(self, mode: str, wav_path: Path | None = None):
         self.set_busy(True)
-        self.status_label.setText("Listening..." if mode == "microphone" else "Fingerprinting file...")
+        self.status_label.setText(
+            "Listening..." if mode == "microphone" else "Fingerprinting file..."
+        )
         self.clear_result_cards()
 
         self.worker_thread = QThread()
@@ -199,7 +220,7 @@ class ShazamPanel(QWidget):
             card.search_requested.connect(self._emit_search_request)
             self.results_layout.insertWidget(index - 1, card)
 
-    def _emit_search_request(self, title: str):
+    def _emit_search_request(self, title: str | bool | None = None):
         # Will be overridden in app.py
         pass
 

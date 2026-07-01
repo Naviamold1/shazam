@@ -1,8 +1,18 @@
 from typing import IO
-from optype.io import CanFSPath
+
 import numpy as np
-from scipy import signal, ndimage
+from optype.io import CanFSPath
+from scipy import signal
 from scipy.io import wavfile
+
+
+TARGET_SAMPLE_RATE = 11025
+WINDOW_SIZE = 1024
+HOP_SIZE = WINDOW_SIZE // 2
+TARGET_ZONE_SIZE = 5
+MAX_FREQ_BITS = 9
+MAX_DELTA_BITS = 14
+FREQUENCY_BANDS = ((0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512))
 
 
 def load_file(p: str | CanFSPath[str] | IO[bytes]):
@@ -11,153 +21,108 @@ def load_file(p: str | CanFSPath[str] | IO[bytes]):
     if data.ndim > 1:
         data = data.mean(axis=1)
 
-    downsample_factor = 4
-    new_sr = int(sr / downsample_factor)
-    downsampled_data = signal.decimate(data, downsample_factor, axis=0)
+    if sr != TARGET_SAMPLE_RATE:
+        divisor = np.gcd(sr, TARGET_SAMPLE_RATE)
+        data = signal.resample_poly(
+            data,
+            TARGET_SAMPLE_RATE // divisor,
+            sr // divisor,
+        )
 
-    return downsampled_data.astype(np.float32), new_sr
+    return data.astype(np.float32), TARGET_SAMPLE_RATE
 
 
 def peak_finding(
     data: np.ndarray,
-    sr: int,
-    nperseg: int = 2048,
-    noverlap: int = 1024,
-    neighborhood_size: int = 15,
-    amp_min_db: float | None = None,
-    percentile: float = 92.0,
-    max_peaks: int | None = None,
+    sample_rate: int,
+    nperseg: int = WINDOW_SIZE,
+    noverlap: int = HOP_SIZE,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if data.size == 0 or sr <= 0:
+    """Pick strong frequency-band peaks from every STFT frame."""
+    if data.size < nperseg or sample_rate <= 0:
         return np.array([]), np.array([])
 
-    nperseg = min(int(nperseg), data.size)
-    if nperseg < 2:
-        return np.array([]), np.array([])
-
-    noverlap = min(int(noverlap), nperseg - 1)
-    neighborhood_size = max(1, int(neighborhood_size))
-
-    f, t, zxx = signal.stft(
+    noverlap = min(noverlap, nperseg - 1)
+    window = signal.windows.hann(nperseg, sym=True)
+    frequencies, _, zxx = signal.stft(
         data,
-        fs=sr,
+        fs=sample_rate,
+        window=window,
         nperseg=nperseg,
         noverlap=noverlap,
         boundary=None,
         padded=False,
     )
-    spectrogram = np.abs(zxx)
-
-    if amp_min_db is None:
-        amp_min_db = float(np.percentile(spectrogram, percentile))
-
-    local_max = ndimage.maximum_filter(
-        spectrogram,
-        size=neighborhood_size,
-        mode="constant",
-        cval=spectrogram.min(),
-    )
-    peak_mask = (spectrogram == local_max) & (spectrogram >= amp_min_db)
-    freq_indexes, time_indexes = np.nonzero(peak_mask)
-
-    if freq_indexes.size == 0 or max_peaks == 0:
+    magnitudes = np.abs(zxx)
+    if magnitudes.shape[1] == 0:
         return np.array([]), np.array([])
 
-    peak_strengths = spectrogram[freq_indexes, time_indexes]
-    if max_peaks is not None:
-        if max_peaks < 0:
-            return np.array([]), np.array([])
-        if freq_indexes.size > max_peaks:
-            strongest = np.argpartition(peak_strengths, -max_peaks)[-max_peaks:]
-            freq_indexes = freq_indexes[strongest]
-            time_indexes = time_indexes[strongest]
-            peak_strengths = peak_strengths[strongest]
-
-    peak_frequencies = f[freq_indexes]
-    peak_times = t[time_indexes]
-    order = np.lexsort((-peak_strengths, peak_frequencies, peak_times))
-    return peak_frequencies[order], peak_times[order]
-
-
-def extract_peaks(data, sr):
-    f, t, zxx = signal.stft(data, sr, nperseg=1022)
-    spectrogram = np.abs(zxx)
-
-    bands = [(0, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 512)]
+    frame_duration = (data.size / sample_rate) / magnitudes.shape[1]
     peaks = []
 
-    local_max = ndimage.maximum_filter(spectrogram, size=15)
+    for frame_index, frame in enumerate(magnitudes.T):
+        band_maxima = []
+        for start, end in FREQUENCY_BANDS:
+            end = min(end, frame.size)
+            if start >= end:
+                continue
+            frequency_index = start + int(np.argmax(frame[start:end]))
+            band_maxima.append((float(frame[frequency_index]), frequency_index))
 
-    threshold = np.percentile(spectrogram, 75)
+        average = np.mean([magnitude for magnitude, _ in band_maxima])
+        for magnitude, frequency_index in band_maxima:
+            if magnitude > average:
+                peaks.append(
+                    (
+                        frame_index * frame_duration,
+                        frequencies[frequency_index],
+                        magnitude,
+                    )
+                )
 
-    freq_idx, times_idx = np.where(
-        (spectrogram == local_max) & (spectrogram > threshold)
-    )
-    order = np.argsort(times_idx)
-
-    freq_idx = freq_idx[order]
-    time_idx = times_idx[order]
-
-    peak_frequencies = f[freq_idx]
-    peak_times = t[times_idx]
+    peaks.sort(key=lambda peak: (peak[0], peak[1]))
+    peak_times = np.array([time for time, _, _ in peaks])
+    peak_frequencies = np.array([frequency for _, frequency, _ in peaks])
     return peak_frequencies, peak_times
 
 
+def create_address(anchor_frequency, target_frequency, delta_seconds):
+    anchor_bits = int(anchor_frequency / 10) & ((1 << MAX_FREQ_BITS) - 1)
+    target_bits = int(target_frequency / 10) & ((1 << MAX_FREQ_BITS) - 1)
+    delta_bits = int(delta_seconds * 1000) & ((1 << MAX_DELTA_BITS) - 1)
+    return (anchor_bits << 23) | (target_bits << 14) | delta_bits
+
+
 def combinatorial_hashing(
-    f: np.ndarray,
-    t: np.ndarray,
+    frequencies: np.ndarray,
+    times: np.ndarray,
     song_id: str | None = None,
-    min_time_between_peaks: float = 0.05,
-    max_time_between_peaks: float = 2.0,
-    max_targets: int = 5,
-    freq_bin_hz: int = 20,
-    time_bin_seconds: float = 0.01,
+    max_targets: int = TARGET_ZONE_SIZE,
 ):
-    order = np.lexsort((f, t))
-    frequencies = f[order]
-    times = t[order]
+    """Pair each peak with the next five peaks, as the Go implementation does."""
+    order = np.lexsort((frequencies, times))
+    frequencies = frequencies[order]
+    times = times[order]
+    hashes = {}
 
-    hashes: list[tuple[str, int] | tuple[str, int, str]] = []
-    for i in range(len(t)):
-        peak_time = times[i]
-        peak_freq = frequencies[i]
+    for index, (anchor_frequency, anchor_time) in enumerate(zip(frequencies, times)):
+        end = min(index + max_targets + 1, len(times))
+        for target_index in range(index + 1, end):
+            address = create_address(
+                anchor_frequency,
+                frequencies[target_index],
+                times[target_index] - anchor_time,
+            )
+            hashes[str(address)] = int(anchor_time * 1000)
 
-        targets_count = 0
-        for j in range(i + 1, len(t)):
-            if targets_count >= max_targets:
-                break
-
-            peak_time2 = times[j]
-            peak_freq2 = frequencies[j]
-
-            delta_t = peak_time2 - peak_time
-
-            if delta_t < min_time_between_peaks:
-                continue
-
-            if delta_t > max_time_between_peaks:
-                break
-
-            targets_count += 1
-            anchor_bin = int(round(peak_freq / freq_bin_hz))
-            target_bin = int(round(peak_freq2 / freq_bin_hz))
-            delta_bin = int(round(delta_t / time_bin_seconds))
-            anchor_time_bin = int(round(peak_time / time_bin_seconds))
-            hash_value = f"{anchor_bin}:{target_bin}:{delta_bin}"
-            if song_id is None:
-                hashes.append((hash_value, anchor_time_bin))
-            else:
-                hashes.append((hash_value, anchor_time_bin, song_id))
-    print(hashes)
-    return hashes
+    if song_id is None:
+        return [(address, anchor_time) for address, anchor_time in hashes.items()]
+    return [(address, anchor_time, song_id) for address, anchor_time in hashes.items()]
 
 
-def fingerprint_file(path: str | CanFSPath[str] | IO[bytes], song_id: str | None = None):
-    data, sr = load_file(path)
-    peak_frequencies, peak_times = peak_finding(data, sr)
+def fingerprint_file(
+    path: str | CanFSPath[str] | IO[bytes], song_id: str | None = None
+):
+    data, sample_rate = load_file(path)
+    peak_frequencies, peak_times = peak_finding(data, sample_rate)
     return combinatorial_hashing(peak_frequencies, peak_times, song_id)
-
-
-# if __name__ == "__main__":
-#     hashes = fingerprint_file("./assets/output.wav")
-#     print(f"Generated {len(hashes)} hashes")

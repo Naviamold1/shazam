@@ -1,9 +1,12 @@
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import yt_dlp
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from backend.recognizer import SongRecognizer, record_microphone_clip
+from backend.db import DBManager
+from backend.main import fingerprint_file
 from scripts.serve_web import get_lan_ip, open_lan
 
 
@@ -74,14 +77,14 @@ class YouTubeSearchWorker(QObject):
             for entry in data.get("entries", []):
                 if not entry:
                     continue
-                video_id = entry.get("id") or ""
-                url = entry.get("url") or entry.get("webpage_url") or ""
-                if video_id and not str(url).startswith("http"):
+                video_id = entry.get("id")
+                url = entry.get("url") or entry.get("webpage_url")
+                if video_id:
                     url = f"https://www.youtube.com/watch?v={video_id}"
                 results.append(
                     {
-                        "title": entry.get("title") or "Untitled",
-                        "artist": entry.get("uploader") or "YouTube",
+                        "title": entry.get("title"),
+                        "artist": entry.get("uploader"),
                         "duration": entry.get("duration"),
                         "webpage_url": url,
                     }
@@ -119,5 +122,82 @@ class YouTubeStreamWorker(QObject):
             resolved = dict(self.result)
             resolved["stream_url"] = stream_url
             self.finished.emit(resolved)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class PlaylistDownloadWorker(QObject):
+    finished = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, tracks: list[dict], destination: Path):
+        super().__init__()
+        self.tracks = tracks
+        self.destination = destination
+
+    def run(self):
+        try:
+            options = {
+                "quiet": True,
+                "no_warnings": True,
+                "format": "bestaudio/best",
+                "noplaylist": True,
+                "outtmpl": str(
+                    self.destination / "%(title)s [%(id)s].%(ext)s"
+                ),
+                "postprocessors": [
+                    {
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "wav",
+                    }
+                ],
+                "postprocessor_args": {"ffmpeg": ["-ac", "1"]},
+            }
+            urls = [track["webpage_url"] for track in self.tracks]
+            with yt_dlp.YoutubeDL(options) as downloader:
+                downloader.download(urls)
+            self.finished.emit(f"Downloaded {len(urls)} songs.")
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class PlaylistFingerprintWorker(QObject):
+    finished = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, tracks: list[dict], db_path: Path):
+        super().__init__()
+        self.tracks = tracks
+        self.db_path = db_path
+
+    def run(self):
+        try:
+            db = DBManager(self.db_path)
+            with TemporaryDirectory() as directory:
+                temp_dir = Path(directory)
+                for index, track in enumerate(self.tracks):
+                    output_base = temp_dir / f"track_{index}"
+                    options = {
+                        "quiet": True,
+                        "no_warnings": True,
+                        "format": "bestaudio/best",
+                        "noplaylist": True,
+                        "outtmpl": f"{output_base}.%(ext)s",
+                        "postprocessors": [
+                            {
+                                "key": "FFmpegExtractAudio",
+                                "preferredcodec": "wav",
+                            }
+                        ],
+                        "postprocessor_args": {"ffmpeg": ["-ac", "1"]},
+                    }
+                    with yt_dlp.YoutubeDL(options) as downloader:
+                        downloader.download([track["webpage_url"]])
+
+                    song_id = track["webpage_url"].split("=")[1]
+                    hashes = fingerprint_file(output_base.with_suffix(".wav"), song_id)
+                    db.replace_hashes(song_id, hashes)
+
+            self.finished.emit(f"Fingerprinted {len(self.tracks)} songs.")
         except Exception as exc:
             self.failed.emit(str(exc))

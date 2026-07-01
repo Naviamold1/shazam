@@ -5,6 +5,10 @@
   letter-spacing: 1.2px;
 }
 
+#playerTitle {
+  font-size: 20px;
+}
+
 #appTitle {
   color: #ffffff;
   font-size: 42px;
@@ -18,17 +22,35 @@
   font-weight: 400;
 }
 
+#shazamToggleButton {
+  background-color: #1db954;
+  border: none;
+  border-radius: 16px;
+  color: #000000;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0;
+}
+
+#shazamToggleButton:hover {
+  background-color: #1ed760;
+}
+
+#shazamToggleButton:pressed {
+  background-color: #1aa34a;
+}
+
 #findButton {
   background-color: #1db954;
   border: none;
-  border-radius: 90px;
+  border-radius: 70px;
   color: #000000;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  min-width: 180px;
-  max-width: 180px;
-  min-height: 180px;
-  max-height: 180px;
+  min-width: 140px;
+  max-width: 140px;
+  min-height: 140px;
+  max-height: 140px;
 }
 
 #findButton:hover {
@@ -79,11 +101,174 @@
   background-color: rgba(255, 255, 255, 0.05);
 }
 
+#playSmallButton {
+  min-width: 34px;
+  max-width: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  padding: 0;
+  border: 1px solid #1db954;
+  border-radius: 17px;
+  color: #1db954;
+  background-color: #1db954;
+  font-weight: 600;
+}
+
+#addSmallButton {
+  min-width: 34px;
+  max-width: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 17px;
+  color: #000000;
+  background-color: #1db954;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+#addSmallButton:hover {
+  background-color: #1ed760;
+}
+
+#playlistTrackRow {
+  border: 1px solid #333333;
+  border-radius: 8px;
+  background-color: #242424;
+}
+
+#playlistTrackTitle {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#historyScrollArea {
+  border: none;
+  background-color: transparent;
+}
+
+#historyRow {
+  border: 1px solid #333333;
+  border-radius: 8px;
+  background-color: #242424;
+}
+
+#historyTitle {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#mediaButton,
+#playMediaButton {
+  min-width: 40px;
+  max-width: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 0;
+  border-radius: 20px;
+}
+
+#playerBar {
+  border: 1px solid #343434;
+  border-radius: 10px;
+  background-color: transparent;
+}
+
+#mediaButton {
+  background-color: transparent;
+  border: 1px solid #727272;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+#mediaButton:hover {
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+#mediaButton:checked {
+  color: #1db954;
+  border-color: #1db954;
+  background-color: rgba(29, 185, 84, 0.12);
+}
+
+#playMediaButton {
+  background-color: #1db954;
+  border: none;
+}
+
+#playMediaButton:hover {
+  background-color: #1ed760;
+}
+
 #statusLabel {
   color: #b3b3b3;
   font-size: 14px;
   font-weight: 500;
   margin-top: 10px;
+}
+
+QStackedWidget#tabPages {
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background-color: transparent;
+}
+
+QTabBar#mainTabBar::tab {
+  min-width: 80px;
+  padding: 8px 14px;
+  margin-right: 6px;
+  border: none;
+  border-bottom: 3px solid #727272;
+  color: #b3b3b3;
+  background: transparent;
+  font-weight: 600;
+}
+
+QTabBar#mainTabBar::tab:selected {
+  border-bottom-color: #1db954;
+  color: #1db954;
+}
+
+#playlistScrollArea,
+#playlistGrid {
+  border: none;
+  background-color: transparent;
+}
+
+#addPlaylistCard,
+#playlistCard {
+  min-height: 130px;
+  max-height: 130px;
+  border-radius: 12px;
+}
+
+#addPlaylistCard {
+  border: none;
+  color: #000000;
+  background-color: #1db954;
+  font-size: 48px;
+  font-weight: 400;
+}
+
+#addPlaylistCard:hover {
+  background-color: #1ed760;
+}
+
+#playlistCard {
+  border: 1px solid #333333;
+  background-color: #242424;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#playlistCard:hover {
+  border-color: #1db954;
+  background-color: #292929;
 }
 
 #resultsArea,

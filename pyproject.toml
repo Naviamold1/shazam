@@ -12,7 +12,7 @@ dependencies = [
     "sounddevice>=0.5.3",
     "scipy>=1.17.1",
     "scipy-stubs>=1.17.1.4",
-    "yt-dlp>=2026.3.17",
+    "yt-dlp>=2026.6.9",
     "fastapi[standard]>=0.137.1",
     "pyqtdarktheme>=2.1.0",
 ]
