@@ -94,8 +94,7 @@ class MusicAppWindow(QMainWindow):
         main_layout.addWidget(self.page_stack, stretch=1)
         main_layout.addWidget(self.player)
 
-        # Search YouTube directly from a recognition result.
-        self.shazam._emit_search_request = self.search_panel.search
+        self.shazam.search_requested.connect(self.search_panel.search)
         self.search_panel.play_requested.connect(self.player.play_collection)
         self.search_panel.add_to_playlist_requested.connect(
             self.playlists_page.prompt_add_song

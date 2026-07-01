@@ -21,7 +21,7 @@ from .workers import RecognitionWorker, ServerThread
 
 
 class CandidateCard(QFrame):
-    search_requested = pyqtSignal(str)  # signal to search on YouTube
+    search_requested = pyqtSignal(str)
 
     def __init__(self, candidate: SongCandidate, rank: int):
         super().__init__()
@@ -74,6 +74,8 @@ class CandidateCard(QFrame):
 
 
 class ShazamPanel(QWidget):
+    search_requested = pyqtSignal(str)
+
     def __init__(self, root_dir: Path, db_path: Path):
         super().__init__()
         self.root_dir = root_dir
@@ -215,12 +217,8 @@ class ShazamPanel(QWidget):
         self.status_label.setText(f"Best match: {best.title}")
         for index, candidate in enumerate(candidates, start=1):
             card = CandidateCard(candidate, index)
-            card.search_requested.connect(self._emit_search_request)
+            card.search_requested.connect(self.search_requested.emit)
             self.results_layout.insertWidget(index - 1, card)
-
-    def _emit_search_request(self, title: str | bool | None = None):
-        # Will be overridden in app.py
-        pass
 
     def open_to_lan(self):
         self.lan_button.setEnabled(False)

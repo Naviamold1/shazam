@@ -31,13 +31,6 @@ class ResultRow(QFrame):
         layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(12)
 
-        self.thumbnail = QLabel()
-        self.thumbnail.setFixedSize(48, 48)
-        self.thumbnail.setObjectName("thumbnail")
-        self.thumbnail.setScaledContents(True)
-
-        self.thumbnail.setText("No img")
-
         text_stack = QVBoxLayout()
         text_stack.setSpacing(4)
 
@@ -70,7 +63,6 @@ class ResultRow(QFrame):
             lambda: self.add_to_playlist_requested.emit(self.result)
         )
 
-        layout.addWidget(self.thumbnail)
         layout.addLayout(text_stack, stretch=1)
         layout.addWidget(play)
         layout.addWidget(add_button)

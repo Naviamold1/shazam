@@ -1,6 +1,5 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from PyQt6.QtNetwork import QNetworkAccessManager
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -25,7 +24,6 @@ class SearchResultsPanel(QWidget):
         self.search_thread: QThread | None = None
         self.search_worker: YouTubeSearchWorker | None = None
         self.results: list[dict] = []
-        self.network_manager = QNetworkAccessManager(self)
 
         self.setObjectName("searchResultsPanel")
         root = QVBoxLayout(self)
