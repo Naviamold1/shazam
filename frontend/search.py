@@ -44,7 +44,7 @@ class SearchResultsPanel(QWidget):
         search_row.addWidget(self.search_input, stretch=1)
         search_row.addWidget(self.search_button)
 
-        self.status_label = QLabel("Type a song name to begin.")
+        self.status_label = QLabel("")
         self.status_label.setObjectName("statusLabel")
         self.status_label.setWordWrap(True)
 

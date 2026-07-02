@@ -1,21 +1,19 @@
-from pathlib import Path
-
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFrame,
-    QGridLayout,
     QLabel,
     QPushButton,
     QScrollArea,
     QStyle,
     QVBoxLayout,
-    QWidget,
+    QWidget, QHBoxLayout,
 )
 
 from backend.db import DBManager
 
 
 class HistoryPage(QWidget):
-    def __init__(self, db_path: Path, play_callback):
+    def __init__(self, db_path: str, play_callback):
         super().__init__()
         self.db = DBManager(db_path)
         self.play_callback = play_callback
@@ -62,44 +60,33 @@ class HistoryPage(QWidget):
     def reload_history(self):
         while self.rows_layout.count():
             item = self.rows_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
+            if item.widget():
+                item.widget().deleteLater()
 
         self.tracks = self.db.get_history()
 
         for index, track in enumerate(self.tracks):
             row = QFrame()
             row.setObjectName("historyRow")
-            row_layout = QGridLayout(row)
-            row_layout.setContentsMargins(12, 10, 12, 10)
+            layout = QHBoxLayout(row)
 
-            title = QLabel(track["title"])
-            title.setObjectName("historyTitle")
-            artist = QLabel(track["artist"])
-            artist.setObjectName("mutedText")
-            played_at = QLabel(track["played_at"])
-            played_at.setObjectName("mutedText")
+            text = QVBoxLayout()
+            text.addWidget(QLabel(track["title"]))
+            text.addWidget(QLabel(f"{track['artist']} • {track['played_at']}"))
 
-            play_button = QPushButton()
-            play_button.setObjectName("playSmallButton")
-            play_button.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-            )
-            play_button.setToolTip("Play")
-            play_button.setFixedSize(34, 34)
-            play_button.clicked.connect(
-                lambda _checked=False, selected=index: self.play_callback(
-                    self.tracks, selected
-                )
+            play = QPushButton()
+            play.setObjectName("playSmallButton")
+            play.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+            play.setToolTip("Play")
+            play.setCursor(Qt.CursorShape.PointingHandCursor)
+            play.setFixedSize(34, 34)
+            play.clicked.connect(
+                lambda _checked=False, i=index: self.play_callback(self.tracks, i)
             )
 
-            row_layout.addWidget(title, 0, 0)
-            row_layout.addWidget(artist, 1, 0)
-            row_layout.addWidget(played_at, 0, 1, 2, 1)
-            row_layout.addWidget(play_button, 0, 2, 2, 1)
-            row_layout.setColumnStretch(0, 1)
+            layout.addLayout(text)
+            layout.addStretch()
+            layout.addWidget(play)
             self.rows_layout.addWidget(row)
 
         self.rows_layout.addStretch()

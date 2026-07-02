@@ -50,7 +50,6 @@
   border-color: transparent;
 }
 
-/* Secondary and Utility Actions */
 #secondaryButton,
 #ghostButton {
   border-radius: 20px;
@@ -115,7 +114,6 @@
 #playlistTrackRow {
   border: 1px solid #333333;
   border-radius: 8px;
-  background-color: #242424;
 }
 
 #playlistTrackTitle {
@@ -132,7 +130,6 @@
 #historyRow {
   border: 1px solid #333333;
   border-radius: 8px;
-  background-color: #242424;
 }
 
 #historyTitle {
@@ -192,7 +189,6 @@
 }
 
 QStackedWidget#tabPages {
-  border: 1px solid #2a2a2a;
   border-radius: 12px;
   background-color: transparent;
 }
@@ -248,7 +244,6 @@ QTabBar#mainTabBar::tab:selected {
 
 #playlistCard:hover {
   border-color: #1db954;
-  background-color: #292929;
 }
 
 #resultsArea {
@@ -256,13 +251,8 @@ QTabBar#mainTabBar::tab:selected {
 }
 
 #candidateCard {
-  background-color: #181818;
   border: 1px solid transparent;
   border-radius: 6px;
-}
-
-#candidateCard:hover {
-  background-color: #282828;
 }
 
 #rankLabel {

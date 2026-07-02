@@ -1,10 +1,10 @@
-import sqlite3
 from pathlib import Path
+import sqlite3
 
 
 class DBManager:
     def __init__(self, db_path: str | Path = "data.db"):
-        self.db_path = Path(db_path)
+        self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path)
         self._create_tables()
 
@@ -75,7 +75,7 @@ class DBManager:
         try:
             curr.executemany(
                 """
-            INSERT INTO songs (id, song_name, song_author, song_genre) VALUES (
+            INSERT OR IGNORE INTO songs (id, song_name, song_author, song_genre) VALUES (
                 ?, ?, ?, ?
             )
             """,
@@ -131,9 +131,13 @@ class DBManager:
     def add_track_to_playlist(
         self,
         playlist_id: int,
+        title: str,
+        artist: str | None,
         webpage_url: str,
     ):
         curr = self.conn.cursor()
+        self.add_songs([(webpage_url, title, artist, None)])
+
         curr.execute(
             """
             INSERT OR IGNORE INTO playlist_entries (song_id, playlist_id)

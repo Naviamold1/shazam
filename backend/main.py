@@ -1,12 +1,12 @@
+from pathlib import Path
 from typing import IO
 
 import numpy as np
-from optype.io import CanFSPath
 from scipy import signal
 from scipy.io import wavfile
 
 
-def load_file(p: str | CanFSPath[str] | IO[bytes]):
+def load_file(p: str | IO[bytes] | Path):
     sr, data = wavfile.read(p)
     TARGET_SAMPLE_RATE = 11025
 
@@ -114,9 +114,7 @@ def combinatorial_hashing(
     return [(address, anchor_time, song_id) for address, anchor_time in hashes.items()]
 
 
-def fingerprint_file(
-    path: str | CanFSPath[str] | IO[bytes], song_id: str | None = None
-):
+def fingerprint_file(path: str | IO[bytes] | Path, song_id: str | None = None):
     data, sample_rate = load_file(path)
     peak_frequencies, peak_times = peak_finding(data, sample_rate)
     return combinatorial_hashing(peak_frequencies, peak_times, song_id)

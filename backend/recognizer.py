@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from pathlib import Path
+from dataclasses import dataclass
 from backend.db import DBManager
 from backend.main import fingerprint_file
 
@@ -19,7 +19,7 @@ class SongRecognizer:
     def __init__(self, db_path: str | Path = "data.db"):
         self.db = DBManager(db_path)
 
-    def recognize_file(self, path: str | Path, limit: int = 5) -> list[SongCandidate]:
+    def recognize_file(self, path: str, limit: int = 5) -> list[SongCandidate]:
         hashes = fingerprint_file(path, None)
         if not hashes or limit <= 0:
             return []

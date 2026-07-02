@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout,
     QWidget,
+    QStyle,
 )
 
 from backend.recognizer import SongCandidate
@@ -59,28 +60,28 @@ class CandidateCard(QFrame):
         )
         confidence.setFixedWidth(60)
 
-        yt_btn = QPushButton("Search")
-        yt_btn.setObjectName("playSmallButton")
-        yt_btn.setFixedWidth(72)
-        yt_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        yt_btn.clicked.connect(lambda: self.search_requested.emit(candidate.title))
+        play_btn = QPushButton("Search")
+        play_btn.setObjectName("playSmallButton")
+        play_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        play_btn.setFixedWidth(72)
+        play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        play_btn.clicked.connect(lambda: self.search_requested.emit(candidate.title))
 
         text_stack.addWidget(title)
         text_stack.addWidget(detail)
         layout.addWidget(rank_label)
         layout.addLayout(text_stack, stretch=1)
         layout.addWidget(confidence)
-        layout.addWidget(yt_btn)
+        layout.addWidget(play_btn)
 
 
 class ShazamPanel(QWidget):
     search_requested = pyqtSignal(str)
 
-    def __init__(self, root_dir: Path, db_path: Path):
+    def __init__(self, root_dir: Path, db_path: str | Path):
         super().__init__()
         self.root_dir = root_dir
         self.db_path = db_path
-        self.worker_thread: QThread | None = None
         self.worker: RecognitionWorker | None = None
         self.server_thread: ServerThread | None = None
 
@@ -92,14 +93,9 @@ class ShazamPanel(QWidget):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
-        title = QLabel("Shazam")
+        title = QLabel("SpotiRec")
         title.setObjectName("shazamTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        subtitle = QLabel("Find from mic, a WAV file, or mobile LAN.")
-        subtitle.setObjectName("mutedText")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setWordWrap(True)
 
         self.find_button = QPushButton("Find Song")
         self.find_button.setObjectName("findButton")
@@ -144,7 +140,7 @@ class ShazamPanel(QWidget):
         action_row.addWidget(self.lan_button, stretch=1)
         action_row.addWidget(self.clear_button, stretch=1)
 
-        self.url_address = QLabel("LAN URL appears here.")
+        self.url_address = QLabel("")
         self.url_address.setObjectName("urlAddress")
         self.url_address.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.url_address.setWordWrap(True)
@@ -164,13 +160,10 @@ class ShazamPanel(QWidget):
         scroll_area.setObjectName("resultsArea")
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setWidget(self.results_container)
 
         root.addWidget(title)
-        root.addWidget(subtitle)
         root.addLayout(button_row)
         root.addLayout(action_row)
         root.addWidget(self.url_address)
@@ -188,24 +181,20 @@ class ShazamPanel(QWidget):
             "WAV files (*.wav)",
         )
         if file_path:
-            self.start_worker("file", Path(file_path))
+            self.start_worker("file", file_path)
 
-    def start_worker(self, mode: str, wav_path: Path | None = None):
+    def start_worker(self, mode: str, wav_path: str | None = None):
         self.set_busy(True)
         self.status_label.setText(
             "Listening..." if mode == "microphone" else "Fingerprinting file..."
         )
         self.clear_result_cards()
 
-        self.worker_thread = QThread()
         self.worker = RecognitionWorker(self.db_path, mode, wav_path)
-        self.worker.moveToThread(self.worker_thread)
-        self.worker_thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.show_results)
-        self.worker.finished.connect(self.worker_thread.quit)
-        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
-        self.worker_thread.finished.connect(self.release_worker)
-        self.worker_thread.start()
+        self.worker.result_ready.connect(self.show_results)
+        self.worker.failed.connect(self.status_label.setText)
+        self.worker.finished.connect(self.release_worker)
+        self.worker.start()
 
     def show_results(self, candidates: list[SongCandidate], source_label: str):
         self.clear_result_cards()
@@ -238,10 +227,6 @@ class ShazamPanel(QWidget):
             ),
         )
 
-    def show_error(self, message: str):
-        self.clear_result_cards()
-        self.status_label.setText(message)
-
     def clear_results(self):
         self.clear_result_cards()
         self.status_label.setText("Ready")
@@ -255,7 +240,6 @@ class ShazamPanel(QWidget):
 
     def release_worker(self):
         self.worker = None
-        self.worker_thread = None
         self.set_busy(False)
 
     def set_busy(self, busy: bool):

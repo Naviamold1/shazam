@@ -86,7 +86,7 @@ class MusicAppWindow(QMainWindow):
         self.page_stack.addWidget(self.playlists_page)
 
         self.history_page = HistoryPage(
-            self.db_path,
+            self.db_path.name,
             self.player.play_collection,
         )
         self.page_stack.addWidget(self.history_page)

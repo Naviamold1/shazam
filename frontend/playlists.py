@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -33,7 +33,6 @@ class PlaylistWindow(QWidget):
         self.playlist_id = playlist_id
         self.play_callback = play_callback
         self.tracks: list[dict] = []
-        self.task_thread: QThread | None = None
         self.task_worker = None
 
         self.setWindowTitle(name)
@@ -49,17 +48,17 @@ class PlaylistWindow(QWidget):
         header.addWidget(title)
         header.addStretch()
 
-        self.play_all_button = self._action_button(
+        self.play_all_button = self.button_component(
             QStyle.StandardPixmap.SP_MediaPlay,
             "Play all",
             self.play_all,
         )
-        self.download_button = self._action_button(
+        self.download_button = self.button_component(
             QStyle.StandardPixmap.SP_ArrowDown,
             "Download all songs",
             self.download_all,
         )
-        self.fingerprint_button = self._action_button(
+        self.fingerprint_button = self.button_component(
             QStyle.StandardPixmap.SP_DialogApplyButton,
             "Fingerprint all songs",
             self.fingerprint_all,
@@ -87,7 +86,7 @@ class PlaylistWindow(QWidget):
 
         self.reload_tracks()
 
-    def _action_button(self, icon_type, tooltip, callback):
+    def button_component(self, icon_type, tooltip, callback):
         button = QPushButton()
         button.setObjectName("mediaButton")
         button.setIcon(self.style().standardIcon(icon_type))
@@ -109,7 +108,7 @@ class PlaylistWindow(QWidget):
         )
         if destination:
             self._start_task(
-                PlaylistDownloadWorker(self.tracks, Path(destination)),
+                PlaylistDownloadWorker(self.tracks, destination),
                 "Downloading playlist...",
             )
 
@@ -122,78 +121,67 @@ class PlaylistWindow(QWidget):
         )
 
     def _start_task(self, worker, message: str):
-        if self.task_thread is not None:
+        if self.task_worker is not None:
             return
         self.status_label.setText(message)
         self.download_button.setEnabled(False)
         self.fingerprint_button.setEnabled(False)
 
-        self.task_thread = QThread()
         self.task_worker = worker
-        worker.moveToThread(self.task_thread)
-        self.task_thread.started.connect(worker.run)
-        worker.finished.connect(self._task_finished)
-        worker.failed.connect(self._task_finished)
-        worker.finished.connect(self.task_thread.quit)
-        worker.failed.connect(self.task_thread.quit)
-        self.task_thread.finished.connect(self.task_thread.deleteLater)
-        self.task_thread.finished.connect(self._release_task)
-        self.task_thread.start()
-
-    def _task_finished(self, message: str):
-        self.status_label.setText(message)
+        worker.result_ready.connect(self.status_label.setText)
+        worker.failed.connect(self.status_label.setText)
+        worker.finished.connect(self._release_task)
+        worker.start()
 
     def _release_task(self):
         self.task_worker = None
-        self.task_thread = None
         self.download_button.setEnabled(True)
         self.fingerprint_button.setEnabled(True)
 
     def reload_tracks(self):
         while self.track_layout.count():
             item = self.track_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
+            if item.widget():
+                item.widget().deleteLater()
 
         self.tracks = self.db.get_playlist_tracks(self.playlist_id)
+
         if not self.tracks:
-            empty = QLabel("This playlist is empty.")
-            empty.setObjectName("mutedText")
-            self.track_layout.addWidget(empty)
+            self.track_layout.addWidget(QLabel("This playlist is empty."))
             self.track_layout.addStretch()
             return
 
         for index, track in enumerate(self.tracks):
             row = QFrame()
             row.setObjectName("playlistTrackRow")
-            row_layout = QVBoxLayout(row)
-            row_layout.setContentsMargins(12, 10, 12, 10)
+            layout = QHBoxLayout(row)
+
+            text = QVBoxLayout()
 
             title = QLabel(track["title"])
             title.setObjectName("playlistTrackTitle")
+
             artist = QLabel(track["artist"])
             artist.setObjectName("mutedText")
 
+            text.addWidget(title)
+            text.addWidget(artist)
+
             play_button = QPushButton()
             play_button.setObjectName("playSmallButton")
-            play_button.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-            )
+            play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
             play_button.setToolTip("Play")
+            play_button.setCursor(Qt.CursorShape.PointingHandCursor)
             play_button.setFixedSize(34, 34)
             play_button.clicked.connect(
-                lambda _checked=False, selected=index: self.play_callback(
-                    self.tracks, selected
-                )
+                lambda _checked=False, i=index:
+                    self.play_callback(self.tracks, i)
             )
 
-            content = QGridLayout()
-            content.addWidget(title, 0, 0)
-            content.addWidget(artist, 1, 0)
-            content.addWidget(play_button, 0, 1, 2, 1)
-            row_layout.addLayout(content)
+            layout.addLayout(text)
+            layout.addStretch()
+            layout.addWidget(play_button)
+
             self.track_layout.addWidget(row)
 
         self.track_layout.addStretch()
@@ -341,4 +329,3 @@ class PlaylistsPage(QWidget):
         for column in range(4):
             self.grid.setColumnStretch(column, 1)
         self.grid.setRowStretch((len(playlists) // 4) + 1, 1)
-

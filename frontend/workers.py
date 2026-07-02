@@ -11,10 +11,11 @@ from backend.main import fingerprint_file
 from scripts.serve_web import get_lan_ip, open_lan
 
 
-class RecognitionWorker(QObject):
-    finished = pyqtSignal(list, str)
+class RecognitionWorker(QThread):
+    result_ready = pyqtSignal(list, str)
+    failed = pyqtSignal(str)
 
-    def __init__(self, db_path: Path, mode: str, wav_path: Path | None = None):
+    def __init__(self, db_path: str | Path, mode: str, wav_path: str | None = None):
         super().__init__()
         self.db_path = db_path
         self.mode = mode
@@ -22,22 +23,25 @@ class RecognitionWorker(QObject):
 
     def run(self):
         temp_path: Path | None = None
-        
-        if self.mode == "microphone":
-            temp_path = record_microphone_clip()
-            source_path = temp_path
-            source_label = "microphone recording"
-        elif self.wav_path is not None:
-            source_path = self.wav_path
-            source_label = self.wav_path.name
-        else:
-            raise RuntimeError("No audio source was selected.")
+        try:
+            if self.mode == "microphone":
+                temp_path = record_microphone_clip()
+                source_path = temp_path
+                source_label = "microphone recording"
+            elif self.wav_path is not None:
+                source_path = self.wav_path
+                source_label = f"loaded {self.wav_path}"
+            else:
+                raise RuntimeError("No audio source was selected.")
 
-        recognizer = SongRecognizer(self.db_path)
-        self.finished.emit(recognizer.recognize_file(source_path), source_label)
-        
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
+            recognizer = SongRecognizer(self.db_path)
+            candidates = recognizer.recognize_file(source_path)
+            self.result_ready.emit(candidates, source_label)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
 
 
 class ServerThread(QThread):
@@ -124,14 +128,14 @@ class YouTubeStreamWorker(QObject):
             self.failed.emit(str(exc))
 
 
-class PlaylistDownloadWorker(QObject):
-    finished = pyqtSignal(str)
+class PlaylistDownloadWorker(QThread):
+    result_ready = pyqtSignal(str)
     failed = pyqtSignal(str)
 
-    def __init__(self, tracks: list[dict], destination: Path):
+    def __init__(self, tracks: list[dict], destination: str | Path):
         super().__init__()
         self.tracks = tracks
-        self.destination = destination
+        self.destination = Path(destination)
 
     def run(self):
         try:
@@ -152,16 +156,16 @@ class PlaylistDownloadWorker(QObject):
             urls = [track["webpage_url"] for track in self.tracks]
             with yt_dlp.YoutubeDL(options) as downloader:
                 downloader.download(urls)
-            self.finished.emit(f"Downloaded {len(urls)} songs.")
+            self.result_ready.emit(f"Downloaded {len(urls)} songs.")
         except Exception as exc:
             self.failed.emit(str(exc))
 
 
-class PlaylistFingerprintWorker(QObject):
-    finished = pyqtSignal(str)
+class PlaylistFingerprintWorker(QThread):
+    result_ready = pyqtSignal(str)
     failed = pyqtSignal(str)
 
-    def __init__(self, tracks: list[dict], db_path: Path):
+    def __init__(self, tracks: list[dict], db_path: str):
         super().__init__()
         self.tracks = tracks
         self.db_path = db_path
@@ -169,8 +173,8 @@ class PlaylistFingerprintWorker(QObject):
     def run(self):
         try:
             db = DBManager(self.db_path)
-            with TemporaryDirectory() as directory:
-                temp_dir = Path(directory)
+            with TemporaryDirectory() as dir:
+                temp_dir = Path(dir)
                 for index, track in enumerate(self.tracks):
                     output_base = temp_dir / f"track_{index}"
                     options = {
@@ -194,6 +198,6 @@ class PlaylistFingerprintWorker(QObject):
                     hashes = fingerprint_file(output_base.with_suffix(".wav"), song_id)
                     db.replace_hashes(song_id, hashes)
 
-            self.finished.emit(f"Fingerprinted {len(self.tracks)} songs.")
+            self.result_ready.emit(f"Fingerprinted {len(self.tracks)} songs.")
         except Exception as exc:
             self.failed.emit(str(exc))

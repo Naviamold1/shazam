@@ -109,23 +109,23 @@ class PlayerControls(QFrame):
         self.repeat_btn.setToolTip("Repeat off")
         self.repeat_btn.clicked.connect(self.cycle_repeat)
 
-        self.prev_btn = self._media_button(
+        self.prev_btn = self.button_component(
             QStyle.StandardPixmap.SP_MediaSkipBackward,
             "Previous track",
             self.play_previous,
         )
-        self.play_pause_button = self._media_button(
+        self.play_pause_button = self.button_component(
             QStyle.StandardPixmap.SP_MediaPlay,
             "Play",
             self.toggle_playback,
             "playMediaButton",
         )
-        self.next_btn = self._media_button(
+        self.next_btn = self.button_component(
             QStyle.StandardPixmap.SP_MediaSkipForward,
             "Next track",
             self.play_next,
         )
-        self.stop_button = self._media_button(
+        self.stop_button = self.button_component(
             QStyle.StandardPixmap.SP_MediaStop,
             "Stop",
             self.stop_playback,
@@ -140,7 +140,7 @@ class PlayerControls(QFrame):
         self.speed_combo.setCurrentText("1x")
         self.speed_combo.currentTextChanged.connect(self.set_speed)
 
-        self.mute_button = self._media_button(
+        self.mute_button = self.button_component(
             QStyle.StandardPixmap.SP_MediaVolume,
             "Mute",
             self.toggle_mute,
@@ -170,7 +170,7 @@ class PlayerControls(QFrame):
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def _media_button(
+    def button_component(
         self, icon_type, tooltip, callback, classname: str = "mediaButton"
     ):
         button = QPushButton()
@@ -213,7 +213,6 @@ class PlayerControls(QFrame):
         self.stream_worker.moveToThread(self.stream_thread)
         self.stream_thread.started.connect(self.stream_worker.run)
         self.stream_worker.finished.connect(self.start_stream)
-        self.stream_worker.failed.connect(self.show_error)
         self.stream_worker.finished.connect(self.stream_thread.quit)
         self.stream_worker.failed.connect(self.stream_thread.quit)
         self.stream_thread.finished.connect(self.stream_thread.deleteLater)
@@ -267,7 +266,7 @@ class PlayerControls(QFrame):
 
     def toggle_playback(self):
         if self.media_player.source().isEmpty():
-            self.status_changed.emit("Choose a search result first.")
+            self.status_changed.emit("Select a song!")
             return
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
@@ -335,9 +334,6 @@ class PlayerControls(QFrame):
         error = self.media_player.errorString()
         if error:
             self.status_changed.emit(error)
-
-    def show_error(self, message: str):
-        self.status_changed.emit(message)
 
     def set_stream_busy(self, busy: bool):
         self.play_pause_button.setEnabled(not busy)

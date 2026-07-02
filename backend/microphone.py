@@ -14,7 +14,6 @@ def record_microphone_clip(duration_seconds: float = 6.0, sample_rate: int = 44_
 
     with NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
         temp_path = Path(temp_file.name)
-        temp_file.flush()
 
     wavfile.write(temp_path, sample_rate, recording)
     return temp_path
@@ -72,7 +71,7 @@ def _handle_recorded_audio(
     except subprocess.CalledProcessError as err:
         temp_input_path.unlink(missing_ok=True)
         temp_output_path.unlink(missing_ok=True)
-        raise RuntimeError(f"Could not decode the recording: {err}")
+        print(f"Could not decode the recording: {err}")
 
     temp_input_path.unlink(missing_ok=True)
     return temp_output_path
