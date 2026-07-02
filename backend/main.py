@@ -54,6 +54,7 @@ def peak_finding(
     frame_duration = (data.size / sample_rate) / magnitudes.shape[1]
     peaks = []
 
+    # finds strongest freq in each band
     for frame_index, frame in enumerate(magnitudes.T):
         band_maxima = []
         for start, end in FREQUENCY_BANDS:
@@ -75,8 +76,8 @@ def peak_finding(
                 )
 
     peaks.sort(key=lambda peak: (peak[0], peak[1]))
-    peak_times = np.array([time for time, _, _ in peaks])
-    peak_frequencies = np.array([frequency for _, frequency, _ in peaks])
+    peak_times = np.array([peak[0] for peak in peaks])
+    peak_frequencies = np.array([peak[1] for peak in peaks])
     return peak_frequencies, peak_times
 
 

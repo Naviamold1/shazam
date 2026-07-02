@@ -101,6 +101,18 @@ class DBManager:
         except Exception as e:
             print(e)
 
+    def get_hashes(self, hashes: list[tuple[str, int]]) -> list[tuple[str, str, int]]:
+        curr = self.conn.cursor()
+        return curr.execute(
+            """
+                SELECT h.song_id, s.song_name, h.time
+                FROM hashes h
+                JOIN songs s ON s.id = h.song_id
+                WHERE h.hash = ?
+                """,
+            (hashes,),
+        ).fetchall()
+
     def replace_hashes(self, song_id: str, hashes: list[tuple[str, int, str]]):
         curr = self.conn.cursor()
 
@@ -109,6 +121,7 @@ class DBManager:
             "INSERT INTO hashes (hash, time, song_id) VALUES (?, ?, ?)",
             hashes,
         )
+        self.conn.commit()
 
     def create_playlist(self, name: str):
         curr = self.conn.cursor()

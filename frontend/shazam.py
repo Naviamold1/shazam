@@ -48,7 +48,7 @@ class CandidateCard(QFrame):
         title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         detail = QLabel(
-            f"ID: {candidate.song_id} | Votes: {candidate.votes} | Offset: {candidate.offset}"
+            f"ID: {candidate.song_id} | Votes: {candidate.votes}"
         )
         detail.setObjectName("candidateDetail")
         detail.setWordWrap(True)

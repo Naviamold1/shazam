@@ -43,5 +43,4 @@ def _candidate_to_json(candidate: SongCandidate):
         "title": candidate.title,
         "votes": candidate.votes,
         "confidence": candidate.confidence,
-        "offset": candidate.offset,
     }
